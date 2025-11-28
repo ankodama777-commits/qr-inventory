@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>QR在庫管理ミニアプリ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- QRコード読み取りライブラリ（オンライン環境が必要） -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f7;
+      color: #222;
+    }
+    header {
+      background: #1d1d1f;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .container {
+      padding: 12px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+      overflow-x: auto;
+    }
+    .tab-button {
+      flex: 1;
+      padding: 8px;
+      border-radius: 999px;
+      border: none;
+      background: #e0e0e5;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .tab-button.active {
+      background: #0070c9;
+      color: #fff;
+      font-weight: 600;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+    }
+    .card h2 {
+      font-size: 16px;
+      margin: 0 0 8px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    input, select, button, textarea {
+      font-family: inherit;
+      font-size: 14px;
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 3px;
+    }
+    button.primary {
+      background: #0070c9;
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 8px 16px;
+      margin-top: 10px;
+    }
+    button.secondary {
+      background: #e0e0e5;
+      border: none;
+      border-radius: 999px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
+    #qr-reader {
+      width: 100%;
+      margin-top: 8px;
+    }
+    .field-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .field-row > div {
+      flex: 1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid #ddd;
+      padding: 4px 3px;
+      text-align: left;
+    }
+    th {
+      background: #f0f0f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .table-wrapper {
+      max-height: 320px;
+      overflow: auto;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 11px;
+      border-radius: 999px;
+      background: #eee;
+      margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+<header>
+  QR在庫管理ミニアプリ
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-button active" data-tab="tab-inbound">入荷登録</button>
+    <button class="tab-button" data-tab="tab-outbound">出庫</button>
+    <button class="tab-button" data-tab="tab-stocktake">棚卸し</button>
+    <button class="tab-button" data-tab="tab-list">データ一覧</button>
+  </div>
+
+  <!-- QRスキャナ共通カード -->
+  <div class="card">
+    <h2>QRスキャン</h2>
+    <div class="small">
+      「カメラを許可」にすると読み取りが開始されます。  
+      QRコードに埋め込む内容は、ひとまず「管理ID（例：ID000123）」の想定です。
+    </div>
+    <button id="btn-start-scan" class="primary">スキャン開始</button>
+    <button id="btn-stop-scan" class="secondary">停止</button>
+    <div id="qr-reader"></div>
+    <label>直近に読み取った内容</label>
+    <input type="text" id="last-scan" readonly />
+  </div>
+
+  <!-- 入荷登録 -->
+  <div id="tab-inbound" class="card">
+    <h2>入荷登録 <span class="badge">IN</span></h2>
+    <div class="small">
+      QRコードを読み込んだ後、「管理ID」「品番」「数量」「棚番」を入力して登録します。
+    </div>
+    <label>管理ID（QR内容）</label>
+    <input type="text" id="inbound-id" placeholder="QR読み取りで自動入力されます" />
+
+    <div class="field-row">
+      <div>
+        <label>品番</label>
+        <input type="text" id="inbound-partno" placeholder="例：ABCD-1234" />
+      </div>
+      <div>
+        <label>ロット</label>
+        <input type="text" id="inbound-lot" placeholder="任意" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>数量</label>
+        <input type="number" id="inbound-qty" min="1" value="1" />
+      </div>
+      <div>
+        <label>棚番</label>
+        <input type="text" id="inbound-location" placeholder="例：A-01-03" />
+      </div>
+    </div>
+
+    <button id="btn-inbound-save" class="primary">入荷を登録</button>
+    <div id="inbound-message" class="small"></div>
+  </div>
+
+  <!-- 出庫 -->
+  <div id="tab-outbound" class="card" style="display:none;">
+    <h2>出庫 <span class="badge">OUT</span></h2>
+    <div class="small">
+      QRコードを読み込むと、該当IDの在庫を検索します。
+    </div>
+
+    <label>管理ID（QR内容）</label>
+    <input type="text" id="outbound-id" placeholder="QR読み取りで自動入力されます" />
+
+    <label>出庫数量</label>
+    <input type="number" id="outbound-qty" min="1" value="1" />
+
+    <button id="btn-outbound-exec" class="primary">出庫処理</button>
+    <div id="outbound-info" class="small"></div>
+  </div>
+
+  <!-- 棚卸し -->
+  <div id="tab-stocktake" class="card" style="display:none;">
+    <h2>棚卸し <span class="badge">STOCK</span></h2>
+    <div class="small">
+      実際の在庫数を入力して、データ上の在庫数を上書きします。
+    </div>
+
+    <label>管理ID（QR内容）</label>
+    <input type="text" id="stocktake-id" placeholder="QR読み取りで自動入力されます" />
+
+    <label>実在数</label>
+    <input type="number" id="stocktake-qty" min="0" value="0" />
+
+    <button id="btn-stocktake-save" class="primary">棚卸し結果を反映</button>
+    <div id="stocktake-info" class="small"></div>
+  </div>
+
+  <!-- データ一覧 -->
+  <div id="tab-list" class="card" style="display:none;">
+    <h2>在庫一覧 <span class="badge">LIST</span></h2>
+    <div class="small">
+      ローカルに保存されているデータを表示します。  
+      「CSVダウンロード」でExcelに取り込めます。
+    </div>
+    <button id="btn-download-csv" class="secondary">CSVダウンロード</button>
+    <button id="btn-clear-all" class="secondary">全データ削除（テスト用）</button>
+    <div class="table-wrapper" style="margin-top:8px;">
+      <table id="inventory-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>品番</th>
+            <th>ロット</th>
+            <th>棚番</th>
+            <th>在庫数</th>
+            <th>最終入荷</th>
+            <th>最終出庫</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ここにJSで行を追加 -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== データ管理（localStorage） =====
+  const STORAGE_KEY = "qr_inventory_data_v1";
+
+  function loadInventory() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  }
+
+  function saveInventory(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    renderTable();
+  }
+
+  function findItemById(data, id) {
+    return data.find(item => item.id === id);
+  }
+
+  function renderTable() {
+    const data = loadInventory();
+    const tbody = document.querySelector("#inventory-table tbody");
+    tbody.innerHTML = "";
+    data.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.id}</td>
+        <td>${item.partNo || ""}</td>
+        <td>${item.lot || ""}</td>
+        <td>${item.location || ""}</td>
+        <td>${item.stockQty ?? 0}</td>
+        <td>${item.lastIn || ""}</td>
+        <td>${item.lastOut || ""}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ===== タブ切り替え =====
+  document.querySelectorAll(".tab-button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      const target = btn.getAttribute("data-tab");
+      ["tab-inbound", "tab-outbound", "tab-stocktake", "tab-list"].forEach(id => {
+        document.getElementById(id).style.display = (id === target) ? "block" : "none";
+      });
+    });
+  });
+
+  // ===== QRスキャン処理 =====
+  let html5QrcodeScanner = null;
+
+  function onScanSuccess(decodedText, decodedResult) {
+    // 直近の読み取り結果を表示
+    document.getElementById("last-scan").value = decodedText;
+
+    // 各タブのIDフィールドにも反映（入力の手間削減）
+    document.getElementById("inbound-id").value = decodedText;
+    document.getElementById("outbound-id").value = decodedText;
+    document.getElementById("stocktake-id").value = decodedText;
+  }
+
+  function startScanner() {
+    const readerElemId = "qr-reader";
+    if (html5QrcodeScanner) {
+      return; // すでに起動中
+    }
+
+    html5QrcodeScanner = new Html5Qrcode(readerElemId);
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 }
+    };
+
+    Html5Qrcode.getCameras().then(cameras => {
+      const cameraId = cameras[0]?.id;
+      if (!cameraId) {
+        alert("カメラが見つかりませんでした。");
+        return;
+      }
+      html5QrcodeScanner.start(
+        cameraId,
+        config,
+        onScanSuccess,
+        errorMessage => {
+          console.log("QRスキャン中...", errorMessage);
+        }
+      ).catch(err => {
+        console.error(err);
+        alert("カメラの起動に失敗しました。Safariでのカメラ許可設定をご確認ください。");
+      });
+    }).catch(err => {
+      console.error(err);
+      alert("カメラ取得に失敗しました。");
+    });
+  }
+
+  function stopScanner() {
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.stop().then(() => {
+        html5QrcodeScanner.clear();
+        html5QrcodeScanner = null;
+      }).catch(err => {
+        console.error("停止に失敗:", err);
+      });
+    }
+  }
+
+  document.getElementById("btn-start-scan").addEventListener("click", startScanner);
+  document.getElementById("btn-stop-scan").addEventListener("click", stopScanner);
+
+  // ===== 入荷登録 =====
+  document.getElementById("btn-inbound-save").addEventListener("click", () => {
+    const id = document.getElementById("inbound-id").value.trim();
+    const partNo = document.getElementById("inbound-partno").value.trim();
+    const lot = document.getElementById("inbound-lot").value.trim();
+    const qty = Number(document.getElementById("inbound-qty").value || 0);
+    const location = document.getElementById("inbound-location").value.trim();
+    const msgEl = document.getElementById("inbound-message");
+
+    if (!id || qty <= 0) {
+      msgEl.textContent = "管理IDと数量は必須です。";
+      return;
+    }
+
+    const data = loadInventory();
+    let item = findItemById(data, id);
+    const now = new Date().toLocaleString();
+
+    if (!item) {
+      item = {
+        id,
+        partNo,
+        lot,
+        location,
+        stockQty: 0,
+        lastIn: "",
+        lastOut: ""
+      };
+      data.push(item);
+    }
+    // 入荷情報更新
+    if (partNo) item.partNo = partNo;
+    if (lot) item.lot = lot;
+    if (location) item.location = location;
+    item.stockQty = (item.stockQty || 0) + qty;
+    item.lastIn = now;
+
+    saveInventory(data);
+    msgEl.textContent = `入荷登録しました。（ID: ${id} / +${qty}）`;
+  });
+
+  // ===== 出庫 =====
+  document.getElementById("btn-outbound-exec").addEventListener("click", () => {
+    const id = document.getElementById("outbound-id").value.trim();
+    const qty = Number(document.getElementById("outbound-qty").value || 0);
+    const infoEl = document.getElementById("outbound-info");
+
+    if (!id || qty <= 0) {
+      infoEl.textContent = "管理IDと出庫数量は必須です。";
+      return;
+    }
+
+    const data = loadInventory();
+    const item = findItemById(data, id);
+    if (!item) {
+      infoEl.textContent = "該当するIDの在庫が見つかりません。";
+      return;
+    }
+
+    const current = item.stockQty || 0;
+    if (current < qty) {
+      infoEl.textContent = `在庫不足です。現在の在庫：${current}`;
+      return;
+    }
+
+    item.stockQty = current - qty;
+    item.lastOut = new Date().toLocaleString();
+    saveInventory(data);
+
+    infoEl.textContent = `出庫しました。（ID: ${id} / -${qty} / 残：${item.stockQty}）`;
+  });
+
+  // ===== 棚卸し =====
+  document.getElementById("btn-stocktake-save").addEventListener("click", () => {
+    const id = document.getElementById("stocktake-id").value.trim();
+    const qty = Number(document.getElementById("stocktake-qty").value || 0);
+    const infoEl = document.getElementById("stocktake-info");
+
+    if (!id) {
+      infoEl.textContent = "管理IDは必須です。";
+      return;
+    }
+    if (qty < 0) {
+      infoEl.textContent = "実在数は0以上で入力してください。";
+      return;
+    }
+
+    const data = loadInventory();
+    let item = findItemById(data, id);
+    const now = new Date().toLocaleString();
+
+    if (!item) {
+      // 棚卸しで新規発見された扱いにする
+      item = {
+        id,
+        partNo: "",
+        lot: "",
+        location: "",
+        stockQty: qty,
+        lastIn: "",
+        lastOut: ""
+      };
+      data.push(item);
+    } else {
+      item.stockQty = qty;
+    }
+
+    // 棚卸し日を lastIn に入れるかどうかはお好みだが、
+    // ここでは分かりやすく棚卸し日時を lastIn にも残しておく
+    item.lastIn = now + "（棚卸し）";
+
+    saveInventory(data);
+    infoEl.textContent = `棚卸し結果を反映しました。（ID: ${id} / 在庫数：${qty}）`;
+  });
+
+  // ===== CSVダウンロード =====
+  document.getElementById("btn-download-csv").addEventListener("click", () => {
+    const data = loadInventory();
+    if (data.length === 0) {
+      alert("データがありません。");
+      return;
+    }
+
+    const header = ["id","partNo","lot","location","stockQty","lastIn","lastOut"];
+    const rows = [header.join(",")];
+
+    data.forEach(item => {
+      const row = [
+        item.id,
+        item.partNo || "",
+        item.lot || "",
+        item.location || "",
+        item.stockQty ?? 0,
+        (item.lastIn || "").replace(/,/g, " "),
+        (item.lastOut || "").replace(/,/g, " ")
+      ];
+      rows.push(row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+    });
+
+    const blob = new Blob([rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "inventory_export.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // ===== 全データ削除（テスト用） =====
+  document.getElementById("btn-clear-all").addEventListener("click", () => {
+    if (!confirm("本当に全データを削除しますか？（テスト用）")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    renderTable();
+  });
+
+  // 初期描画
+  renderTable();
+</script>
+</body>
+</html>

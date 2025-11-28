@@ -338,39 +338,52 @@
   }
 
   function startScanner() {
-    const readerElemId = "qr-reader";
-    if (html5QrcodeScanner) {
-      return; // すでに起動中
+  const readerElemId = "qr-reader";
+
+  // すでに起動していれば再起動しない
+  if (html5QrcodeScanner) return;
+
+  html5QrcodeScanner = new Html5Qrcode(readerElemId);
+
+  const config = {
+    fps: 10,
+    qrbox: { width: 250, height: 250 }
+  };
+
+  // ★ カメラ一覧取得
+  Html5Qrcode.getCameras().then(cameras => {
+    if (!cameras || cameras.length === 0) {
+      alert("カメラが見つかりませんでした。");
+      return;
     }
 
-    html5QrcodeScanner = new Html5Qrcode(readerElemId);
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 }
-    };
+    // ★ 背面カメラらしい名前のものを優先
+    let backCam = cameras.find(c =>
+      /back|rear|environment|外|アウト|背面/i.test(c.label)
+    );
 
-    Html5Qrcode.getCameras().then(cameras => {
-      const cameraId = cameras[0]?.id;
-      if (!cameraId) {
-        alert("カメラが見つかりませんでした。");
-        return;
+    // 見つからなければ一番目
+    const cameraId = (backCam || cameras[0]).id;
+
+    // ★ 背面カメラで起動
+    html5QrcodeScanner.start(
+      cameraId,
+      config,
+      onScanSuccess,
+      errorMessage => {
+        console.warn("スキャン中エラー:", errorMessage);
       }
-      html5QrcodeScanner.start(
-        cameraId,
-        config,
-        onScanSuccess,
-        errorMessage => {
-          console.log("QRスキャン中...", errorMessage);
-        }
-      ).catch(err => {
-        console.error(err);
-        alert("カメラの起動に失敗しました。Safariでのカメラ許可設定をご確認ください。");
-      });
-    }).catch(err => {
-      console.error(err);
-      alert("カメラ取得に失敗しました。");
+    ).catch(err => {
+      console.error("カメラ起動失敗:", err);
+      alert("カメラの起動に失敗しました。ブラウザのカメラ許可を確認してください。");
     });
-  }
+
+  }).catch(err => {
+    console.error("カメラ取得失敗:", err);
+    alert("カメラ情報の取得に失敗しました。");
+  });
+}
+
 
   function stopScanner() {
     if (html5QrcodeScanner) {
@@ -548,3 +561,4 @@
 </script>
 </body>
 </html>
+

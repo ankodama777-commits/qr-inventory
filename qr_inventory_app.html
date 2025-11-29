@@ -342,22 +342,39 @@
     };
 
     Html5Qrcode.getCameras().then(cameras => {
-      const cameraId = cameras[0]?.id;
-      if (!cameraId) {
-        alert("カメラが見つかりませんでした。");
-        return;
-      }
-      html5QrcodeScanner.start(
-        cameraId,
-        config,
-        onScanSuccess,
-        errorMessage => {
-          console.log("QRスキャン中...", errorMessage);
+      if (cameras && cameras.length) {
+        // 1. 背面カメラ（バックカメラ）を探す
+        // ラベルに "back" や "rear" を含むものを優先的に選択する
+        let targetCamera = cameras.find(camera => 
+          camera.label && (camera.label.toLowerCase().includes("back") || camera.label.toLowerCase().includes("rear"))
+        );
+        
+        // 2. 見つからなかった場合、リストの最後のカメラ（多くの場合、バックカメラ）を選択
+        if (!targetCamera) {
+          targetCamera = cameras[cameras.length - 1]; 
         }
-      ).catch(err => {
-        console.error(err);
-        alert("カメラの起動に失敗しました。Safariでのカメラ許可設定をご確認ください。");
-      });
+
+        const cameraId = targetCamera?.id;
+        
+        if (!cameraId) {
+          alert("カメラが見つかりませんでした。");
+          return;
+        }
+
+        html5QrcodeScanner.start(
+          cameraId,
+          config,
+          onScanSuccess,
+          errorMessage => {
+            console.log("QRスキャン中...", errorMessage);
+          }
+        ).catch(err => {
+          console.error(err);
+          alert("カメラの起動に失敗しました。Safariでのカメラ許可設定をご確認ください。");
+        });
+      } else {
+        alert("利用可能なカメラが見つかりませんでした。");
+      }
     }).catch(err => {
       console.error(err);
       alert("カメラ取得に失敗しました。");

@@ -175,7 +175,8 @@
     <label>オーダーID（QR内容）</label>
     <input type="text" id="inbound-id" placeholder="QR読み取りで自動入力されます" />
     
-    <label>品名</label> <input type="text" id="inbound-product-name" placeholder="例：六角ボルト M8x20 2025年発注分" />
+    <label>品名</label>
+    <input type="text" id="inbound-product-name" placeholder="例：六角ボルト M8x20 2025年発注分" />
 
     <div class="field-row">
       <div>
@@ -201,9 +202,10 @@
     <label>オーダーID（QR内容）</label>
     <input type="text" id="outbound-id" placeholder="QR読み取りで自動入力されます" />
 
-    <label>品名</label> <input type="text" id="outbound-product-name" placeholder="該当IDの品名が表示されます" readonly />
-
-    <label>使用数量</label>
+    <label>品名</label>
+    <input type="text" id="outbound-product-name" placeholder="該当IDの品名が表示されます" readonly />
+    
+    <label>登録棚番</label> <input type="text" id="outbound-location" placeholder="該当IDの登録棚番が表示されます" readonly /> <label>使用数量</label>
     <input type="number" id="outbound-qty" min="1" value="1" />
 
     <button id="btn-outbound-exec" class="primary">使用処理</button>
@@ -226,7 +228,8 @@
         <thead>
           <tr>
             <th>オーダーID</th> 
-            <th>品名</th> <th>棚番</th>
+            <th>品名</th>
+            <th>棚番</th>
             <th>在庫数</th>
             <th>最終入荷</th>
             <th>最終出庫</th>
@@ -281,7 +284,6 @@
     tbody.innerHTML = "";
     data.forEach(item => {
       const tr = document.createElement("tr");
-      // ★品名カラムを再表示
       tr.innerHTML = `
         <td>${item.id}</td> 
         <td>${item.productName || "-"}</td>
@@ -331,7 +333,7 @@
     });
   });
 
-  // ===== QRスキャン処理（品名検索と表示を復活） =====
+  // ===== QRスキャン処理（品名検索と棚番表示を復活） =====
   let html5QrcodeScanner = null;
 
   function onScanSuccess(decodedText, decodedResult) {
@@ -340,16 +342,21 @@
     document.getElementById("inbound-id").value = decodedText;
     document.getElementById("outbound-id").value = decodedText;
 
-    // ★在庫データから既存の品名を取得
+    // ★在庫データから既存の品名と棚番を取得
     const data = loadInventory();
     const existingItem = findItemById(data, decodedText);
+    
+    // 品名
     const existingProductName = existingItem ? existingItem.productName : "";
+    // 棚番
+    const existingLocation = existingItem ? existingItem.location : ""; // ★棚番を取得
     
     // 入荷タブには既存の品名を自動入力し、編集可能
     document.getElementById("inbound-product-name").value = existingProductName;
     
-    // 使用タブには既存の品名を自動入力し、読取専用
+    // 使用タブには品名と棚番を自動入力し、読取専用
     document.getElementById("outbound-product-name").value = existingProductName || "未登録のオーダーIDです";
+    document.getElementById("outbound-location").value = existingLocation || "未登録"; // ★棚番の表示を追加
   }
 
   function startScanner() {
@@ -415,10 +422,10 @@
   document.getElementById("btn-stop-scan").addEventListener("click", stopScanner);
 
 
-  // ===== 入荷登録（品名保存を復活） =====
+  // ===== 入荷登録（変更なし） =====
   document.getElementById("btn-inbound-save").addEventListener("click", () => {
     const id = document.getElementById("inbound-id").value.trim();
-    const productName = document.getElementById("inbound-product-name").value.trim(); // ★品名を取得
+    const productName = document.getElementById("inbound-product-name").value.trim();
     const qty = Number(document.getElementById("inbound-qty").value || 0);
     const inputLocation = document.getElementById("inbound-location").value;
     const msgEl = document.getElementById("inbound-message");
@@ -437,7 +444,7 @@
     if (!item) {
       item = {
         id,
-        productName: productName, // ★品名をセット
+        productName: productName,
         partNo: "", 
         lot: "", 
         location, 
@@ -449,20 +456,19 @@
     }
     
     if (location) item.location = location; 
-    if (productName) item.productName = productName; // ★品名がある場合は更新
+    if (productName) item.productName = productName; 
     
     item.stockQty = (item.stockQty || 0) + qty;
     item.lastIn = now;
     
     document.getElementById("inbound-location").value = location;
-    // 入荷登録後、品名欄をクリア
     document.getElementById("inbound-product-name").value = ""; 
 
     saveInventory(data);
     msgEl.textContent = `入荷登録しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / +${qty} / 棚番: ${location || '-'}）`;
   });
 
-  // ===== 使用/数量調整（品名チェックを復活） =====
+  // ===== 使用/数量調整（メッセージに棚番を追加） =====
   document.getElementById("btn-outbound-exec").addEventListener("click", () => {
     const id = document.getElementById("outbound-id").value.trim();
     const qty = Number(document.getElementById("outbound-qty").value || 0);
@@ -490,10 +496,11 @@
     item.lastOut = new Date().toLocaleString() + "（使用）"; 
     saveInventory(data);
 
-    infoEl.textContent = `使用を処理しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / -${qty} / 残：${item.stockQty}）`; // ★品名を追加
+    // ★実行メッセージに棚番を追加
+    infoEl.textContent = `使用を処理しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / 棚番: ${item.location || '-'} / -${qty} / 残：${item.stockQty}）`; 
   });
 
-  // ===== CSVダウンロード（品名カラムを復活） =====
+  // ===== CSVダウンロード（変更なし） =====
   document.getElementById("btn-download-csv").addEventListener("click", () => {
     const data = loadInventory();
     if (data.length === 0) {
@@ -501,14 +508,13 @@
       return;
     }
 
-    // ★品名プロパティを復活させたヘッダー
     const header = ["id", "productName", "location", "stockQty", "lastIn", "lastOut"]; 
     const rows = [header.join(",")];
 
     data.forEach(item => {
       const row = [
         item.id,
-        item.productName || "", // ★品名を出力
+        item.productName || "",
         item.location || "",
         item.stockQty ?? 0,
         (item.lastIn || "").replace(/,/g, " "),

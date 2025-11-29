@@ -97,26 +97,10 @@
       color: #666;
     }
     
-    /* 修正: QRリーダーコンテナの基本設定 */
-    #qr-reader {
-      width: 100%;
-      margin-top: 8px;
-    }
-    /* 【重要】内部のカメラ映像表示要素に高さを固定して、ライブラリの読み取り位置を調整 */
-    #qr-reader > div {
-        width: 100%;
-        height: 180px; /* カメラ映像の表示高さを固定 */
-        overflow: hidden; 
-        border-radius: 8px; 
-        border: 1px solid #ccc; 
-    }
-    /* html5-qrcodeが生成するカメラ映像/キャンバス要素のサイズをコンテナに合わせる */
-    #qr-reader > div > video,
-    #qr-reader > div > canvas {
-        width: 100% !important;
-        height: 100% !important; /* 動画要素の高さもコンテナに合わせる */
-        object-fit: cover; /* 画面に収まるように調整（中央を優先的に表示） */
-    }
+    /* ************************************** */
+    /* 以前のカメラ画面のサイズ調整CSSを削除しました */
+    /* QRリーダーはデフォルト（画面いっぱい）に戻ります */
+    /* ************************************** */
     
     .field-row {
       display: flex;

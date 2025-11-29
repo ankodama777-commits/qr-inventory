@@ -97,10 +97,7 @@
       color: #666;
     }
     
-    /* ************************************** */
-    /* 以前のカメラ画面のサイズ調整CSSを削除しました */
-    /* QRリーダーはデフォルト（画面いっぱい）に戻ります */
-    /* ************************************** */
+    /* 以前のカメラ画面のサイズ調整CSSを削除済み */
     
     .field-row {
       display: flex;
@@ -237,8 +234,6 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>品番</th>
-            <th>ロット</th>
             <th>棚番</th>
             <th>在庫数</th>
             <th>最終入荷</th>
@@ -284,8 +279,6 @@
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${item.id}</td>
-        <td>${item.partNo || ""}</td>
-        <td>${item.lot || ""}</td>
         <td>${item.location || ""}</td>
         <td>${item.stockQty ?? 0}</td>
         <td>${item.lastIn || ""}</td>
@@ -555,14 +548,13 @@
       return;
     }
 
-    const header = ["id","partNo","lot","location","stockQty","lastIn","lastOut"];
+    // 修正: 品番とロットを削除
+    const header = ["id","location","stockQty","lastIn","lastOut"]; 
     const rows = [header.join(",")];
 
     data.forEach(item => {
       const row = [
         item.id,
-        item.partNo || "",
-        item.lot || "",
         item.location || "",
         item.stockQty ?? 0,
         (item.lastIn || "").replace(/,/g, " "),

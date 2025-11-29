@@ -158,7 +158,7 @@
     <h2>QRスキャン</h2>
     <div class="small">
       「カメラを許可」にすると読み取りが開始されます。  
-      QRコードに埋め込む内容は、**オーダーID（ユニークID）**の想定です。
+      QRコードには「**オーダーID | 品名**」を連結した形式を想定しています。
     </div>
     <button id="btn-start-scan" class="primary">スキャン開始</button>
     <button id="btn-stop-scan" class="secondary">停止</button>
@@ -172,10 +172,10 @@
     <div class="small">
       QRコードを読み込んだ後、「オーダーID」「品名」「数量」「棚番」を入力して登録します。
     </div>
-    <label>オーダーID（QR内容）</label>
+    <label>オーダーID（QR内容から自動分割）</label>
     <input type="text" id="inbound-id" placeholder="QR読み取りで自動入力されます" />
     
-    <label>品名</label>
+    <label>品名（QR内容から自動分割）</label> 
     <input type="text" id="inbound-product-name" placeholder="例：六角ボルト M8x20 2025年発注分" />
 
     <div class="field-row">
@@ -199,13 +199,16 @@
       QRコードを読み込んだ後、使用した数量を入力し、在庫から差し引きます。
     </div>
 
-    <label>オーダーID（QR内容）</label>
+    <label>オーダーID（QR内容から自動分割）</label>
     <input type="text" id="outbound-id" placeholder="QR読み取りで自動入力されます" />
 
     <label>品名</label>
     <input type="text" id="outbound-product-name" placeholder="該当IDの品名が表示されます" readonly />
     
-    <label>登録棚番</label> <input type="text" id="outbound-location" placeholder="該当IDの登録棚番が表示されます" readonly /> <label>使用数量</label>
+    <label>登録棚番</label> 
+    <input type="text" id="outbound-location" placeholder="該当IDの登録棚番が表示されます" readonly /> 
+
+    <label>使用数量</label>
     <input type="number" id="outbound-qty" min="1" value="1" />
 
     <button id="btn-outbound-exec" class="primary">使用処理</button>
@@ -333,30 +336,45 @@
     });
   });
 
-  // ===== QRスキャン処理（品名検索と棚番表示を復活） =====
+  // ===== QRスキャン処理（オーダーIDと品名の分割処理を追加） =====
   let html5QrcodeScanner = null;
 
   function onScanSuccess(decodedText, decodedResult) {
     document.getElementById("last-scan").value = decodedText;
 
-    document.getElementById("inbound-id").value = decodedText;
-    document.getElementById("outbound-id").value = decodedText;
+    let scannedId = decodedText;
+    let scannedProductName = "";
+    
+    // 【重要】QRコードの内容を '|'（パイプ記号）で分割し、オーダーIDと品名に分ける
+    const parts = decodedText.split('|');
+    if (parts.length >= 2) {
+        scannedId = parts[0].trim();
+        // 残りの部分を品名として結合（品名の中に '|' が含まれる可能性を考慮）
+        scannedProductName = parts.slice(1).join('|').trim();
+    } else {
+      // 分割できない場合は、QR内容全体をオーダーIDとし、品名は空白
+      scannedId = decodedText.trim();
+      scannedProductName = "";
+    }
 
-    // ★在庫データから既存の品名と棚番を取得
+    // --- データを在庫から検索 ---
     const data = loadInventory();
-    const existingItem = findItemById(data, decodedText);
+    const existingItem = findItemById(data, scannedId);
     
-    // 品名
+    // 既存の品名/棚番があればそれを使う
     const existingProductName = existingItem ? existingItem.productName : "";
-    // 棚番
-    const existingLocation = existingItem ? existingItem.location : ""; // ★棚番を取得
+    const existingLocation = existingItem ? existingItem.location : "";
+
+    // --- 入荷タブの更新 ---
+    document.getElementById("inbound-id").value = scannedId;
+    // QRコードに含まれる品名があればそれを優先。なければ既存品名。
+    document.getElementById("inbound-product-name").value = scannedProductName || existingProductName;
     
-    // 入荷タブには既存の品名を自動入力し、編集可能
-    document.getElementById("inbound-product-name").value = existingProductName;
-    
-    // 使用タブには品名と棚番を自動入力し、読取専用
-    document.getElementById("outbound-product-name").value = existingProductName || "未登録のオーダーIDです";
-    document.getElementById("outbound-location").value = existingLocation || "未登録"; // ★棚番の表示を追加
+    // --- 使用タブの更新 ---
+    document.getElementById("outbound-id").value = scannedId;
+    // 使用タブでは、在庫に登録されている品名を優先して表示
+    document.getElementById("outbound-product-name").value = existingProductName || scannedProductName || "未登録のオーダーIDです"; 
+    document.getElementById("outbound-location").value = existingLocation || "未登録"; 
   }
 
   function startScanner() {
@@ -462,13 +480,15 @@
     item.lastIn = now;
     
     document.getElementById("inbound-location").value = location;
+    // 入荷登録後、品名欄と数量欄をクリア
     document.getElementById("inbound-product-name").value = ""; 
+    document.getElementById("inbound-qty").value = "1";
 
     saveInventory(data);
     msgEl.textContent = `入荷登録しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / +${qty} / 棚番: ${location || '-'}）`;
   });
 
-  // ===== 使用/数量調整（メッセージに棚番を追加） =====
+  // ===== 使用/数量調整（変更なし） =====
   document.getElementById("btn-outbound-exec").addEventListener("click", () => {
     const id = document.getElementById("outbound-id").value.trim();
     const qty = Number(document.getElementById("outbound-qty").value || 0);
@@ -496,7 +516,7 @@
     item.lastOut = new Date().toLocaleString() + "（使用）"; 
     saveInventory(data);
 
-    // ★実行メッセージに棚番を追加
+    // 実行メッセージに棚番を追加
     infoEl.textContent = `使用を処理しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / 棚番: ${item.location || '-'} / -${qty} / 残：${item.stockQty}）`; 
   });
 

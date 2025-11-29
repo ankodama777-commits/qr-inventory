@@ -96,10 +96,19 @@
       font-size: 12px;
       color: #666;
     }
+    /* 修正: カメラ映像の表示エリアを小さくする */
     #qr-reader {
       width: 100%;
+      height: 180px; /* カメラ映像の表示高さを固定 */
       margin-top: 8px;
+      overflow: hidden; /* 制限を超えた部分を非表示 */
+      border-radius: 8px; /* 角を丸くする */
     }
+    /* html5-qrcodeが生成する要素への追加調整 */
+    #qr-reader > div {
+      height: 100% !important; 
+    }
+    
     .field-row {
       display: flex;
       gap: 8px;
@@ -293,7 +302,7 @@
     });
   }
   
-  // ===== 【新規追加】棚番の自動整形関数 =====
+  // ===== 棚番の自動整形関数 =====
   /**
    * 棚番を「A-1-1-1」の形式に整形します。
    * 入力例: a111, A1-1-1, A 1 1 1 など -> A-1-1-1 に統一
@@ -415,180 +424,3 @@
   }
 
   function stopScanner() {
-    if (html5QrcodeScanner) {
-      html5QrcodeScanner.stop().then(() => {
-        html5QrcodeScanner.clear();
-        html5QrcodeScanner = null;
-      }).catch(err => {
-        console.error("停止に失敗:", err);
-      });
-    }
-  }
-
-  document.getElementById("btn-start-scan").addEventListener("click", startScanner);
-  document.getElementById("btn-stop-scan").addEventListener("click", stopScanner);
-
-  // ===== 入荷登録 (品番とロットを削除済み) =====
-  document.getElementById("btn-inbound-save").addEventListener("click", () => {
-    const id = document.getElementById("inbound-id").value.trim();
-    const qty = Number(document.getElementById("inbound-qty").value || 0);
-    const inputLocation = document.getElementById("inbound-location").value;
-    const msgEl = document.getElementById("inbound-message");
-
-    if (!id || qty <= 0) {
-      msgEl.textContent = "管理IDと数量は必須です。";
-      return;
-    }
-    
-    // 【修正点】棚番の値を整形
-    const location = formatLocation(inputLocation);
-
-    const data = loadInventory();
-    let item = findItemById(data, id);
-    const now = new Date().toLocaleString();
-
-    if (!item) {
-      item = {
-        id,
-        partNo: "", 
-        lot: "",
-        location, // 整形された棚番をセット
-        stockQty: 0,
-        lastIn: "",
-        lastOut: ""
-      };
-      data.push(item);
-    }
-    // 入荷情報更新
-    if (location) item.location = location; // 整形された棚番で更新
-    item.stockQty = (item.stockQty || 0) + qty;
-    item.lastIn = now;
-    
-    // 入力フィールドにも整形結果を反映してユーザーに示す
-    document.getElementById("inbound-location").value = location;
-
-
-    saveInventory(data);
-    msgEl.textContent = `入荷登録しました。（ID: ${id} / +${qty} / 棚番: ${location || '-'}）`;
-  });
-
-  // ===== 出庫 =====
-  document.getElementById("btn-outbound-exec").addEventListener("click", () => {
-    const id = document.getElementById("outbound-id").value.trim();
-    const qty = Number(document.getElementById("outbound-qty").value || 0);
-    const infoEl = document.getElementById("outbound-info");
-
-    if (!id || qty <= 0) {
-      infoEl.textContent = "管理IDと出庫数量は必須です。";
-      return;
-    }
-
-    const data = loadInventory();
-    const item = findItemById(data, id);
-    if (!item) {
-      infoEl.textContent = "該当するIDの在庫が見つかりません。";
-      return;
-    }
-
-    const current = item.stockQty || 0;
-    if (current < qty) {
-      infoEl.textContent = `在庫不足です。現在の在庫：${current}`;
-      return;
-    }
-
-    item.stockQty = current - qty;
-    item.lastOut = new Date().toLocaleString();
-    saveInventory(data);
-
-    infoEl.textContent = `出庫しました。（ID: ${id} / -${qty} / 残：${item.stockQty}）`;
-  });
-
-  // ===== 棚卸し =====
-  document.getElementById("btn-stocktake-save").addEventListener("click", () => {
-    const id = document.getElementById("stocktake-id").value.trim();
-    const qty = Number(document.getElementById("stocktake-qty").value || 0);
-    const infoEl = document.getElementById("stocktake-info");
-
-    if (!id) {
-      infoEl.textContent = "管理IDは必須です。";
-      return;
-    }
-    if (qty < 0) {
-      infoEl.textContent = "実在数は0以上で入力してください。";
-      return;
-    }
-
-    const data = loadInventory();
-    let item = findItemById(data, id);
-    const now = new Date().toLocaleString();
-
-    if (!item) {
-      // 棚卸しで新規発見された扱いにする
-      item = {
-        id,
-        partNo: "",
-        lot: "",
-        location: "",
-        stockQty: qty,
-        lastIn: "",
-        lastOut: ""
-      };
-      data.push(item);
-    } else {
-      item.stockQty = qty;
-    }
-
-    // 棚卸し日を lastIn にも残しておく
-    item.lastIn = now + "（棚卸し）";
-
-    saveInventory(data);
-    infoEl.textContent = `棚卸し結果を反映しました。（ID: ${id} / 在庫数：${qty}）`;
-  });
-
-  // ===== CSVダウンロード =====
-  document.getElementById("btn-download-csv").addEventListener("click", () => {
-    const data = loadInventory();
-    if (data.length === 0) {
-      alert("データがありません。");
-      return;
-    }
-
-    const header = ["id","partNo","lot","location","stockQty","lastIn","lastOut"];
-    const rows = [header.join(",")];
-
-    data.forEach(item => {
-      const row = [
-        item.id,
-        item.partNo || "",
-        item.lot || "",
-        item.location || "",
-        item.stockQty ?? 0,
-        (item.lastIn || "").replace(/,/g, " "),
-        (item.lastOut || "").replace(/,/g, " ")
-      ];
-      rows.push(row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
-    });
-
-    const blob = new Blob([rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "inventory_export.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-
-  // ===== 全データ削除（テスト用） =====
-  document.getElementById("btn-clear-all").addEventListener("click", () => {
-    if (!confirm("本当に全データを削除しますか？（テスト用）")) return;
-    localStorage.removeItem(STORAGE_KEY);
-    renderTable();
-  });
-
-  // 初期描画
-  renderTable();
-</script>
-</body>
-</html>

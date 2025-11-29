@@ -5,7 +5,6 @@
   <title>QR在庫管理ミニアプリ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- QRコード読み取りライブラリ（オンライン環境が必要） -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
   <style>
@@ -155,8 +154,7 @@
     <button class="tab-button" data-tab="tab-list">データ一覧</button>
   </div>
 
-  <!-- QRスキャナ共通カード -->
-  <div class="card">
+  <div class="card" id="qr-scanner-card">
     <h2>QRスキャン</h2>
     <div class="small">
       「カメラを許可」にすると読み取りが開始されます。  
@@ -169,25 +167,13 @@
     <input type="text" id="last-scan" readonly />
   </div>
 
-  <!-- 入荷登録 -->
   <div id="tab-inbound" class="card">
     <h2>入荷登録 <span class="badge">IN</span></h2>
     <div class="small">
-      QRコードを読み込んだ後、「管理ID」「品番」「数量」「棚番」を入力して登録します。
+      QRコードを読み込んだ後、「管理ID」「数量」「棚番」を入力して登録します。
     </div>
     <label>管理ID（QR内容）</label>
     <input type="text" id="inbound-id" placeholder="QR読み取りで自動入力されます" />
-
-    <div class="field-row">
-      <div>
-        <label>品番</label>
-        <input type="text" id="inbound-partno" placeholder="例：ABCD-1234" />
-      </div>
-      <div>
-        <label>ロット</label>
-        <input type="text" id="inbound-lot" placeholder="任意" />
-      </div>
-    </div>
 
     <div class="field-row">
       <div>
@@ -204,7 +190,6 @@
     <div id="inbound-message" class="small"></div>
   </div>
 
-  <!-- 出庫 -->
   <div id="tab-outbound" class="card" style="display:none;">
     <h2>出庫 <span class="badge">OUT</span></h2>
     <div class="small">
@@ -221,7 +206,6 @@
     <div id="outbound-info" class="small"></div>
   </div>
 
-  <!-- 棚卸し -->
   <div id="tab-stocktake" class="card" style="display:none;">
     <h2>棚卸し <span class="badge">STOCK</span></h2>
     <div class="small">
@@ -238,7 +222,6 @@
     <div id="stocktake-info" class="small"></div>
   </div>
 
-  <!-- データ一覧 -->
   <div id="tab-list" class="card" style="display:none;">
     <h2>在庫一覧 <span class="badge">LIST</span></h2>
     <div class="small">
@@ -261,8 +244,7 @@
           </tr>
         </thead>
         <tbody>
-          <!-- ここにJSで行を追加 -->
-        </tbody>
+          </tbody>
       </table>
     </div>
   </div>
@@ -321,6 +303,16 @@
       ["tab-inbound", "tab-outbound", "tab-stocktake", "tab-list"].forEach(id => {
         document.getElementById(id).style.display = (id === target) ? "block" : "none";
       });
+
+      // QRスキャナカードの表示/非表示を制御
+      const qrScannerCard = document.getElementById("qr-scanner-card");
+      if (target === "tab-list") {
+        qrScannerCard.style.display = "none";
+        // カメラリソースを解放するため、スキャナーを停止させる
+        stopScanner(); 
+      } else {
+        qrScannerCard.style.display = "block";
+      }
     });
   });
 
@@ -338,52 +330,39 @@
   }
 
   function startScanner() {
-  const readerElemId = "qr-reader";
-
-  // すでに起動していれば再起動しない
-  if (html5QrcodeScanner) return;
-
-  html5QrcodeScanner = new Html5Qrcode(readerElemId);
-
-  const config = {
-    fps: 10,
-    qrbox: { width: 250, height: 250 }
-  };
-
-  // ★ カメラ一覧取得
-  Html5Qrcode.getCameras().then(cameras => {
-    if (!cameras || cameras.length === 0) {
-      alert("カメラが見つかりませんでした。");
-      return;
+    const readerElemId = "qr-reader";
+    if (html5QrcodeScanner) {
+      return; // すでに起動中
     }
 
-    // ★ 背面カメラらしい名前のものを優先
-    let backCam = cameras.find(c =>
-      /back|rear|environment|外|アウト|背面/i.test(c.label)
-    );
+    html5QrcodeScanner = new Html5Qrcode(readerElemId);
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 }
+    };
 
-    // 見つからなければ一番目
-    const cameraId = (backCam || cameras[0]).id;
-
-    // ★ 背面カメラで起動
-    html5QrcodeScanner.start(
-      cameraId,
-      config,
-      onScanSuccess,
-      errorMessage => {
-        console.warn("スキャン中エラー:", errorMessage);
+    Html5Qrcode.getCameras().then(cameras => {
+      const cameraId = cameras[0]?.id;
+      if (!cameraId) {
+        alert("カメラが見つかりませんでした。");
+        return;
       }
-    ).catch(err => {
-      console.error("カメラ起動失敗:", err);
-      alert("カメラの起動に失敗しました。ブラウザのカメラ許可を確認してください。");
+      html5QrcodeScanner.start(
+        cameraId,
+        config,
+        onScanSuccess,
+        errorMessage => {
+          console.log("QRスキャン中...", errorMessage);
+        }
+      ).catch(err => {
+        console.error(err);
+        alert("カメラの起動に失敗しました。Safariでのカメラ許可設定をご確認ください。");
+      });
+    }).catch(err => {
+      console.error(err);
+      alert("カメラ取得に失敗しました。");
     });
-
-  }).catch(err => {
-    console.error("カメラ取得失敗:", err);
-    alert("カメラ情報の取得に失敗しました。");
-  });
-}
-
+  }
 
   function stopScanner() {
     if (html5QrcodeScanner) {
@@ -399,11 +378,9 @@
   document.getElementById("btn-start-scan").addEventListener("click", startScanner);
   document.getElementById("btn-stop-scan").addEventListener("click", stopScanner);
 
-  // ===== 入荷登録 =====
+  // ===== 入荷登録 (品番とロットを削除済み) =====
   document.getElementById("btn-inbound-save").addEventListener("click", () => {
     const id = document.getElementById("inbound-id").value.trim();
-    const partNo = document.getElementById("inbound-partno").value.trim();
-    const lot = document.getElementById("inbound-lot").value.trim();
     const qty = Number(document.getElementById("inbound-qty").value || 0);
     const location = document.getElementById("inbound-location").value.trim();
     const msgEl = document.getElementById("inbound-message");
@@ -420,8 +397,8 @@
     if (!item) {
       item = {
         id,
-        partNo,
-        lot,
+        partNo: "", 
+        lot: "",
         location,
         stockQty: 0,
         lastIn: "",
@@ -430,8 +407,6 @@
       data.push(item);
     }
     // 入荷情報更新
-    if (partNo) item.partNo = partNo;
-    if (lot) item.lot = lot;
     if (location) item.location = location;
     item.stockQty = (item.stockQty || 0) + qty;
     item.lastIn = now;
@@ -506,8 +481,7 @@
       item.stockQty = qty;
     }
 
-    // 棚卸し日を lastIn に入れるかどうかはお好みだが、
-    // ここでは分かりやすく棚卸し日時を lastIn にも残しておく
+    // 棚卸し日を lastIn にも残しておく
     item.lastIn = now + "（棚卸し）";
 
     saveInventory(data);
@@ -561,4 +535,3 @@
 </script>
 </body>
 </html>
-

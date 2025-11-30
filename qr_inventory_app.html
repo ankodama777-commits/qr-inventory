@@ -107,10 +107,10 @@
       flex: 1;
     }
     .field-cell label {
-      margin-top: 0; /* 行先頭の余白を詰める */
+      margin-top: 0;
     }
 
-    /* 直近読み取り表示用 */
+    /* 直近読み取り表示 */
     .last-scan-label {
       display: block;
       font-size: 12px;
@@ -129,6 +129,26 @@
       word-break: break-all;
       pointer-events: none; /* 触ってもフォーカスされない */
     }
+
+    /* 棚番をドーンと表示する枠 */
+    .big-location-box {
+      margin-top: 4px;
+      margin-bottom: 8px;
+      padding: 12px 8px;
+      border-radius: 12px;
+      background: #fff7e0;
+      border: 2px solid #f5b800;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.08em;
+      color: #b36b00;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
   </style>
 </head>
 
@@ -142,8 +162,7 @@
   <!-- タブ -->
   <div class="tabs">
     <button class="tab-button active" data-tab="tab-inbound">入荷登録</button>
-    <button class="tab-button" data-tab="tab-outbound">出庫</button>
-    <button class="tab-button" data-tab="tab-view">情報表示</button>
+    <button class="tab-button" data-tab="tab-use">使用 / 調整</button>
   </div>
 
   <!-- QRスキャナ -->
@@ -173,7 +192,7 @@
       </div>
     </div>
 
-    <!-- 品名（1列） -->
+    <!-- 品名 -->
     <label>品名</label>
     <input type="text" id="inbound-name" />
 
@@ -193,73 +212,47 @@
     <div id="inbound-msg" class="small"></div>
   </div>
 
-  <!-- 出庫 -->
-  <div id="tab-outbound" class="card" style="display:none;">
-    <h2>出庫 <span class="small">OUT</span></h2>
+  <!-- 使用 / 数量調整（出庫＋情報表示を統合） -->
+  <div id="tab-use" class="card" style="display:none;">
+    <h2>使用 / 数量調整 <span class="small">OUT / ADJ</span></h2>
+
+    <!-- 棚番を大きく表示 -->
+    <div id="big-location" class="big-location-box"></div>
 
     <!-- オーダー + 機種名 -->
     <div class="field-row">
       <div class="field-cell">
         <label>オーダーID</label>
-        <input type="text" id="outbound-id" />
+        <input type="text" id="use-id" />
       </div>
       <div class="field-cell">
         <label>機種名</label>
-        <input type="text" id="outbound-model" readonly />
+        <input type="text" id="use-model" readonly />
       </div>
     </div>
 
     <!-- 品名 -->
     <label>品名</label>
-    <input type="text" id="outbound-name" readonly />
+    <input type="text" id="use-name" readonly />
 
-    <!-- 棚番 + 数量 -->
+    <!-- 棚番 + 使用数量 -->
     <div class="field-row">
       <div class="field-cell">
         <label>棚番</label>
-        <input type="text" id="outbound-loc" readonly />
+        <input type="text" id="use-loc" readonly />
       </div>
       <div class="field-cell">
-        <label>数量</label>
-        <input type="number" id="outbound-qty" min="1" value="1" />
+        <label>使用数量</label>
+        <input type="number" id="use-qty" min="1" value="1" />
       </div>
     </div>
 
-    <button id="btn-outbound-save" class="primary">出庫する</button>
-    <div id="outbound-msg" class="small"></div>
-  </div>
+    <!-- 任意：現在庫を表示したい場合 -->
+    <label>現在庫（GAS側で返却される場合）</label>
+    <input type="text" id="use-stock" readonly />
 
-  <!-- 閲覧専用 情報表示タブ -->
-  <div id="tab-view" class="card" style="display:none;">
-    <h2>情報表示 <span class="small">VIEW</span></h2>
-
-    <!-- オーダー + 機種名 -->
-    <div class="field-row">
-      <div class="field-cell">
-        <label>オーダーID</label>
-        <input type="text" id="view-id" readonly />
-      </div>
-      <div class="field-cell">
-        <label>機種名</label>
-        <input type="text" id="view-model" readonly />
-      </div>
-    </div>
-
-    <!-- 品名 -->
-    <label>品名</label>
-    <input type="text" id="view-name" readonly />
-
-    <!-- 棚番 + 在庫数 -->
-    <div class="field-row">
-      <div class="field-cell">
-        <label>棚番</label>
-        <input type="text" id="view-loc" readonly />
-      </div>
-      <div class="field-cell">
-        <label>在庫数（GAS側で返却される場合）</label>
-        <input type="text" id="view-qty" readonly />
-      </div>
-    </div>
+    <button id="btn-use-save" class="primary">使用 / 数量調整を登録</button>
+    <div id="use-msg" class="small"></div>
   </div>
 </div>
 
@@ -363,6 +356,15 @@ async function sendOutbound(id, name, loc, qty, model) {
 
 /************************************************************
  *   lookup（QR読み後）
+ *   期待レスポンス例：
+ *   {
+ *     "order": "ABCD-R1-01",
+ *     "itemName": "部材1",
+ *     "location": "A111",
+ *     "modelName": "XXX-1000",
+ *     "stockQty": 10,
+ *     "ok": true
+ *   }
  ************************************************************/
 async function lookup(order) {
   const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
@@ -401,7 +403,7 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
         name = sp[1].trim();
       }
 
-      // 入荷タブへセット（初期値）
+      // 入荷タブ：初期値
       document.getElementById("inbound-id").value = order;
       document.getElementById("inbound-name").value = name;
 
@@ -421,18 +423,19 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
         document.getElementById("inbound-loc").value = locNorm;
         document.getElementById("inbound-model").value = model;
 
-        // 出庫タブ
-        document.getElementById("outbound-id").value = info.order || order;
-        document.getElementById("outbound-name").value = itemName;
-        document.getElementById("outbound-loc").value = locNorm;
-        document.getElementById("outbound-model").value = model;
+        // 使用 / 調整タブ
+        document.getElementById("use-id").value = info.order || order;
+        document.getElementById("use-name").value = itemName;
+        document.getElementById("use-loc").value = locNorm;
+        document.getElementById("use-model").value = model;
+        document.getElementById("use-stock").value = stockQty;
 
-        // 閲覧専用タブ
-        document.getElementById("view-id").value = info.order || order;
-        document.getElementById("view-model").value = model;
-        document.getElementById("view-name").value = itemName;
-        document.getElementById("view-loc").value = locNorm;
-        document.getElementById("view-qty").value = stockQty;
+        // 棚番を大きく表示
+        document.getElementById("big-location").textContent = locNorm;
+      } else {
+        // lookup 失敗時は、棚番の大枠だけリセット
+        document.getElementById("big-location").textContent = "";
+        document.getElementById("use-stock").value = "";
       }
     }
   );
@@ -456,7 +459,7 @@ document.getElementById("btn-inbound-save").addEventListener("click", async () =
 
   const locRaw = document.getElementById("inbound-loc").value.trim();
   const loc = normalizeLocation(locRaw);
-  document.getElementById("inbound-loc").value = loc; // 画面上も統一
+  document.getElementById("inbound-loc").value = loc;
 
   const msg = document.getElementById("inbound-msg");
 
@@ -465,7 +468,6 @@ document.getElementById("btn-inbound-save").addEventListener("click", async () =
     return;
   }
 
-  // GAS送信
   const res = await sendInbound(id, name, loc, qty, model);
   if (res.ok) {
     msg.textContent = "入荷登録：GAS OK";
@@ -476,37 +478,37 @@ document.getElementById("btn-inbound-save").addEventListener("click", async () =
 });
 
 /************************************************************
- *   出庫
+ *   使用 / 数量調整
  ************************************************************/
-document.getElementById("btn-outbound-save").addEventListener("click", async () => {
-  const id = document.getElementById("outbound-id").value.trim();
-  const name = document.getElementById("outbound-name").value.trim();
-  const qty = Number(document.getElementById("outbound-qty").value);
-  const model = document.getElementById("outbound-model").value.trim();
+document.getElementById("btn-use-save").addEventListener("click", async () => {
+  const id = document.getElementById("use-id").value.trim();
+  const name = document.getElementById("use-name").value.trim();
+  const qty = Number(document.getElementById("use-qty").value);
+  const model = document.getElementById("use-model").value.trim();
 
-  const locRaw = document.getElementById("outbound-loc").value.trim();
+  const locRaw = document.getElementById("use-loc").value.trim();
   const loc = normalizeLocation(locRaw);
-  document.getElementById("outbound-loc").value = loc;
+  document.getElementById("use-loc").value = loc;
+  document.getElementById("big-location").textContent = loc;
 
-  const msg = document.getElementById("outbound-msg");
+  const msg = document.getElementById("use-msg");
 
   if (!id || !qty) {
-    msg.textContent = "IDと数量は必須です。";
+    msg.textContent = "IDと使用数量は必須です。";
     return;
   }
 
-  // GAS送信
   const res = await sendOutbound(id, name, loc, qty, model);
   if (res.ok) {
-    msg.textContent = "出庫処理：GAS OK";
+    msg.textContent = "使用 / 数量調整：GAS OK";
     notifySuccess();
   } else {
-    msg.textContent = "出庫処理：GAS ERROR";
+    msg.textContent = "使用 / 数量調整：GAS ERROR";
   }
 });
 
 /************************************************************
- *   棚番入力の自動整形（blur 時）
+ *   棚番入力の自動整形（入荷側のみ手入力可能）
  ************************************************************/
 document.getElementById("inbound-loc").addEventListener("blur", () => {
   const input = document.getElementById("inbound-loc");

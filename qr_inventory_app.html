@@ -156,12 +156,12 @@
   <div class="card" id="qr-scanner-card">
     <h2>QRスキャン</h2>
     <div class="small">
-      「カメラを許可」にすると読み取りが開始されます。  
-      QRコードには「<strong>オーダーID | 品名</strong>」を連結した形式を想定しています。
+      「スキャン開始」を押すとカメラが起動します。<br>
+      QR形式：「<strong>オーダーID | 品名</strong>」または「<strong>オーダーID</strong>」
     </div>
     <button id="btn-start-scan" class="primary">スキャン開始</button>
     <button id="btn-stop-scan" class="secondary">停止</button>
-    <div id="qr-reader"></div>
+    <div id="qr-reader" style="margin-top:10px;"></div>
     <label>直近に読み取った内容</label>
     <input type="text" id="last-scan" readonly />
   </div>
@@ -246,8 +246,8 @@
 <script>
   // ===== データ管理（localStorage） =====
   const STORAGE_KEY = "qr_inventory_data_v1";
-
-  // ★GAS のウェブアプリURL（あなたのURLを埋め込み済み）
+  
+  // GAS URL（そのまま維持）
   const GAS_URL = "https://script.google.com/macros/s/AKfycbxhdUVm0gz4AbkeIA6TqVtt3mSq88VNrz-2MzX95m7xovETymU8C7KTv31zS2DT3UAvYg/exec";
 
   function loadInventory() {
@@ -327,7 +327,7 @@
       const qrScannerCard = document.getElementById("qr-scanner-card");
       if (target === "tab-list") {
         qrScannerCard.style.display = "none";
-        stopScanner();
+        stopScanner(); // タブ移動時にカメラを停止
       } else {
         qrScannerCard.style.display = "block";
       }
@@ -336,22 +336,13 @@
 
   // ===== GAS（スプレッドシート）から在庫を取得する関数 =====
   async function fetchInventoryByOrder(orderNo) {
-    if (!GAS_URL) {
-      console.warn("GAS_URL が設定されていません");
-      return null;
-    }
+    if (!GAS_URL) return null;
     try {
       const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(orderNo)}`;
       const res = await fetch(url);
-      if (!res.ok) {
-        console.error("GAS HTTPエラー", res.status);
-        return null;
-      }
+      if (!res.ok) return null;
       const data = await res.json();
-      if (data.error) {
-        console.warn("GASからエラー:", data.error);
-        return null;
-      }
+      if (data.error) return null;
       return data;
     } catch (err) {
       console.error("GAS呼び出しでエラー", err);
@@ -359,13 +350,107 @@
     }
   }
 
-  // ===== QRスキャン処理 =====
+  // ===== QRスキャン処理（修正版: 起動トラブル対策済み） =====
   let html5QrcodeScanner = null;
+  let isScanning = false;
 
   function onScanSuccess(decodedText, decodedResult) {
     handleScan(decodedText, decodedResult);
   }
 
+  // 汎用的なエラーハンドリングとクリーンアップ
+  async function cleanupScanner() {
+    if (html5QrcodeScanner) {
+      try {
+        if (isScanning) {
+          await html5QrcodeScanner.stop();
+        }
+        html5QrcodeScanner.clear();
+      } catch (e) {
+        console.warn("Cleanup error:", e);
+      }
+    }
+    html5QrcodeScanner = null;
+    isScanning = false;
+    // DOM内もクリアにする
+    document.getElementById("qr-reader").innerHTML = ""; 
+  }
+
+  function startScanner() {
+    const readerElemId = "qr-reader";
+    
+    // すでにインスタンスがある場合は一旦リセットしてから再開
+    if (html5QrcodeScanner) {
+      cleanupScanner().then(() => {
+        startScannerCore(readerElemId);
+      });
+    } else {
+      startScannerCore(readerElemId);
+    }
+  }
+
+  function startScannerCore(readerElemId) {
+    html5QrcodeScanner = new Html5Qrcode(readerElemId);
+    
+    const config = {
+      fps: 10,
+      qrbox: { width: 200, height: 200 }
+    };
+
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras && cameras.length) {
+        // バックカメラを優先的に探す
+        let targetCamera = cameras.find(camera => 
+          camera.label && (camera.label.toLowerCase().includes("back") || camera.label.toLowerCase().includes("rear"))
+        );
+        if (!targetCamera) {
+          targetCamera = cameras[cameras.length - 1];
+        }
+
+        const cameraId = targetCamera?.id;
+        if (!cameraId) {
+          alert("カメラが見つかりませんでした。");
+          cleanupScanner(); 
+          return;
+        }
+
+        html5QrcodeScanner.start(
+          cameraId,
+          config,
+          onScanSuccess,
+          (errorMessage) => {
+             // スキャン中のQR未検出エラーは無視でOK
+          }
+        ).then(() => {
+          isScanning = true;
+        }).catch(err => {
+          console.error(err);
+          alert("カメラの起動に失敗しました。\n・ブラウザのリロードを試してください\n・Safariのカメラ許可設定を確認してください");
+          cleanupScanner();
+        });
+      } else {
+        alert("利用可能なカメラが見つかりませんでした。");
+        cleanupScanner();
+      }
+    }).catch(err => {
+      console.error(err);
+      alert("カメラ情報の取得に失敗しました。");
+      cleanupScanner();
+    });
+  }
+
+  function stopScanner() {
+    if (html5QrcodeScanner) {
+      cleanupScanner().catch(err => {
+        console.error("停止処理でエラー:", err);
+      });
+    }
+  }
+
+  document.getElementById("btn-start-scan").addEventListener("click", startScanner);
+  document.getElementById("btn-stop-scan").addEventListener("click", stopScanner);
+
+  // ===== スキャン結果ハンドリング =====
   async function handleScan(decodedText, decodedResult) {
     document.getElementById("last-scan").value = decodedText;
 
@@ -390,15 +475,12 @@
 
     // 入荷タブ：ひとまず QR + ローカル情報で更新
     document.getElementById("inbound-id").value = scannedId;
-    document.getElementById("inbound-product-name").value =
-      scannedProductName || localProductName;
+    document.getElementById("inbound-product-name").value = scannedProductName || localProductName;
 
     // 使用タブ：ひとまずローカル情報を表示
     document.getElementById("outbound-id").value = scannedId;
-    document.getElementById("outbound-product-name").value =
-      localProductName || scannedProductName || "未登録のオーダーIDです";
-    document.getElementById("outbound-location").value =
-      localLocation || "未登録";
+    document.getElementById("outbound-product-name").value = localProductName || scannedProductName || "未登録のオーダーIDです";
+    document.getElementById("outbound-location").value = localLocation || "未登録";
 
     // GAS（在庫管理シート）に照会して、情報があれば上書き
     const gasInfo = await fetchInventoryByOrder(scannedId);
@@ -426,76 +508,14 @@
       }
 
       if (infoEl) {
-        infoEl.textContent =
-          `シート在庫：棚番 ${sheetLocation || "-"} / 在庫 ${sheetStock}`;
+        infoEl.textContent = `シート在庫：棚番 ${sheetLocation || "-"} / 在庫 ${sheetStock}`;
       }
     } else {
       if (infoEl) {
-        infoEl.textContent =
-          "スプレッドシートに在庫情報が見つかりませんでした。ローカルデータのみ表示しています。";
-    }
-  }
-
-  function startScanner() {
-    const readerElemId = "qr-reader";
-    if (html5QrcodeScanner) {
-      return;
-    }
-
-    html5QrcodeScanner = new Html5Qrcode(readerElemId);
-    const config = {
-      fps: 10,
-      qrbox: { width: 200, height: 200 }
-    };
-
-    Html5Qrcode.getCameras().then(cameras => {
-      if (cameras && cameras.length) {
-        let targetCamera = cameras.find(camera =>
-          camera.label && (camera.label.toLowerCase().includes("back") || camera.label.toLowerCase().includes("rear"))
-        );
-        if (!targetCamera) {
-          targetCamera = cameras[cameras.length - 1];
-        }
-
-        const cameraId = targetCamera?.id;
-        if (!cameraId) {
-          alert("カメラが見つかりませんでした。");
-          return;
-        }
-
-        html5QrcodeScanner.start(
-          cameraId,
-          config,
-          onScanSuccess,
-          errorMessage => {
-            console.log("QRスキャン中...", errorMessage);
-          }
-        ).catch(err => {
-          console.error(err);
-          alert("カメラの起動に失敗しました。Safariでのカメラ許可設定をご確認ください。");
-        });
-      } else {
-        alert("利用可能なカメラが見つかりませんでした。");
+        infoEl.textContent = "スプレッドシートに在庫情報が見つかりませんでした。ローカルデータのみ表示しています。";
       }
-    }).catch(err => {
-      console.error(err);
-      alert("カメラ取得に失敗しました。");
-    });
-  }
-
-  function stopScanner() {
-    if (html5QrcodeScanner) {
-      html5QrcodeScanner.stop().then(() => {
-        html5QrcodeScanner.clear();
-        html5QrcodeScanner = null;
-      }).catch(err => {
-        console.error("停止に失敗:", err);
-      });
     }
   }
-
-  document.getElementById("btn-start-scan").addEventListener("click", startScanner);
-  document.getElementById("btn-stop-scan").addEventListener("click", stopScanner);
 
   // ===== 入荷登録 =====
   document.getElementById("btn-inbound-save").addEventListener("click", () => {
@@ -511,7 +531,6 @@
     }
 
     const location = formatLocation(inputLocation);
-
     const data = loadInventory();
     let item = findItemById(data, id);
     const now = new Date().toLocaleString();
@@ -541,8 +560,7 @@
     document.getElementById("inbound-qty").value = "1";
 
     saveInventory(data);
-    msgEl.textContent =
-      `入荷登録しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / +${qty} / 棚番: ${location || '-'}）`;
+    msgEl.textContent = `入荷登録しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / +${qty} / 棚番: ${location || '-'}）`;
   });
 
   // ===== 使用/数量調整 =====
@@ -573,8 +591,7 @@
     item.lastOut = new Date().toLocaleString() + "（使用）";
     saveInventory(data);
 
-    infoEl.textContent =
-      `使用を処理しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / 棚番: ${item.location || '-'} / -${qty} / 残：${item.stockQty}）`;
+    infoEl.textContent = `使用を処理しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / 棚番: ${item.location || '-'} / -${qty} / 残：${item.stockQty}）`;
   });
 
   // ===== CSVダウンロード =====

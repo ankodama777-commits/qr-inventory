@@ -110,6 +110,25 @@
       margin-top: 0;
     }
 
+    /* スキャンボタン行 & スイッチ */
+    .scan-controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .scan-mode {
+      margin-top: 6px;
+    }
+    .scan-mode label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 0;
+      font-size: 12px;
+      color: #444;
+    }
+
     /* 直近読み取り表示 */
     .last-scan-label {
       display: block;
@@ -127,7 +146,7 @@
       font-size: 13px;
       color: #333;
       word-break: break-all;
-      pointer-events: none; /* 触ってもフォーカスされない */
+      pointer-events: none;
     }
 
     /* 棚番をドーンと表示する枠 */
@@ -168,8 +187,19 @@
   <!-- QRスキャナ -->
   <div class="card" id="qr-scanner-card">
     <h2>QRスキャン</h2>
-    <button id="btn-start-scan" class="primary">スキャン開始</button>
-    <button id="btn-stop-scan" class="secondary">停止</button>
+
+    <div class="scan-controls-row">
+      <button id="btn-start-scan" class="primary">スキャン開始</button>
+      <button id="btn-stop-scan" class="secondary">停止</button>
+    </div>
+
+    <div class="scan-mode">
+      <label>
+        <input type="checkbox" id="scan-mode-toggle" checked />
+        連続スキャン（オフで1回読み取りごとに停止）
+      </label>
+    </div>
+
     <div id="qr-reader" style="margin-top:10px;"></div>
 
     <span class="last-scan-label">直近の読み取り</span>
@@ -216,7 +246,7 @@
   <div id="tab-use" class="card" style="display:none;">
     <h2>使用 / 数量調整 <span class="small">OUT / ADJ</span></h2>
 
-    <!-- 棚番を大きく表示 -->
+    <!-- 棚番を大きく表示：ラベルなしでドーンと出す -->
     <div id="big-location" class="big-location-box"></div>
 
     <!-- オーダー + 機種名 -->
@@ -235,19 +265,14 @@
     <label>品名</label>
     <input type="text" id="use-name" readonly />
 
-    <!-- 棚番 + 使用数量 -->
-    <div class="field-row">
-      <div class="field-cell">
-        <label>棚番</label>
-        <input type="text" id="use-loc" readonly />
-      </div>
-      <div class="field-cell">
-        <label>使用数量</label>
-        <input type="number" id="use-qty" min="1" value="1" />
-      </div>
-    </div>
+    <!-- 棚番は hidden で内部保持のみ -->
+    <input type="hidden" id="use-loc" />
 
-    <!-- 任意：現在庫を表示したい場合 -->
+    <!-- 使用数量 -->
+    <label>使用数量</label>
+    <input type="number" id="use-qty" min="1" value="1" />
+
+    <!-- 現在庫（GAS側で返却される場合） -->
     <label>現在庫（GAS側で返却される場合）</label>
     <input type="text" id="use-stock" readonly />
 
@@ -264,7 +289,7 @@
 /************************************************************
  *   設定
  ************************************************************/
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwuCfqLxQiLMQpt34wHkl4zUNP4M3aAIdrvGfII3feW0fJxhZDRccgDdnCfs2u8K_nwcg/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
 /************************************************************
  *   棚番整形関数
@@ -303,12 +328,12 @@ function playSound(id) {
 }
 
 function notifyScan() {
-  vibrate(50);                // 軽く1回
+  vibrate(50);
   playSound("audio-scan");
 }
 
 function notifySuccess() {
-  vibrate([40, 60, 40]);      // 少しリッチな振動
+  vibrate([40, 60, 40]);
   playSound("audio-success");
 }
 
@@ -334,7 +359,7 @@ async function sendInbound(id, name, loc, qty, model) {
 }
 
 /************************************************************
- *   GAS呼び出し（OUT）
+ *   GAS呼び出し（OUT / 使用・調整）
  ************************************************************/
 async function sendOutbound(id, name, loc, qty, model) {
   const body = new URLSearchParams({
@@ -356,15 +381,6 @@ async function sendOutbound(id, name, loc, qty, model) {
 
 /************************************************************
  *   lookup（QR読み後）
- *   期待レスポンス例：
- *   {
- *     "order": "ABCD-R1-01",
- *     "itemName": "部材1",
- *     "location": "A111",
- *     "modelName": "XXX-1000",
- *     "stockQty": 10,
- *     "ok": true
- *   }
  ************************************************************/
 async function lookup(order) {
   const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
@@ -373,22 +389,39 @@ async function lookup(order) {
 }
 
 /************************************************************
- *   QRスキャン
+ *   スキャンモード（連続 / 単発）
  ************************************************************/
 let html5Scanner = null;
+let continuousScan = true; // true:連続, false:1回で停止
 
+const scanModeToggle = document.getElementById("scan-mode-toggle");
+if (scanModeToggle) {
+  continuousScan = scanModeToggle.checked;
+  scanModeToggle.addEventListener("change", (e) => {
+    continuousScan = e.target.checked;
+  });
+}
+
+/************************************************************
+ *   QRスキャン
+ ************************************************************/
 document.getElementById("btn-start-scan").addEventListener("click", async () => {
+  // 既存インスタンスがあれば停止してクリア
   if (html5Scanner) {
-    await html5Scanner.stop();
+    try {
+      await html5Scanner.stop();
+    } catch (e) {}
     html5Scanner.clear();
+    html5Scanner = null;
   }
 
   html5Scanner = new Html5Qrcode("qr-reader");
+
   html5Scanner.start(
     { facingMode: "environment" },
     { fps: 10, qrbox: 200 },
     async (decoded) => {
-      // 直近読み取り枠に表示
+      // 直近読み取り表示
       document.getElementById("last-scan").textContent = decoded;
 
       // スキャン成功フィードバック
@@ -414,9 +447,10 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
         const model = info.modelName || "";
         const locNorm = normalizeLocation(info.location || "");
         const itemName = info.itemName || name;
-        const stockQty = (info.stockQty !== undefined && info.stockQty !== null)
-          ? info.stockQty
-          : "";
+        const stockQty =
+          info.stockQty !== undefined && info.stockQty !== null
+            ? info.stockQty
+            : "";
 
         // 入荷タブ
         document.getElementById("inbound-name").value = itemName;
@@ -426,25 +460,41 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
         // 使用 / 調整タブ
         document.getElementById("use-id").value = info.order || order;
         document.getElementById("use-name").value = itemName;
-        document.getElementById("use-loc").value = locNorm;
+        document.getElementById("use-loc").value = locNorm;  // hidden
         document.getElementById("use-model").value = model;
         document.getElementById("use-stock").value = stockQty;
 
         // 棚番を大きく表示
         document.getElementById("big-location").textContent = locNorm;
       } else {
-        // lookup 失敗時は、棚番の大枠だけリセット
+        // lookup失敗時は棚番等をクリア
         document.getElementById("big-location").textContent = "";
         document.getElementById("use-stock").value = "";
       }
+
+      // 単発モードならここでカメラ停止
+      if (!continuousScan && html5Scanner) {
+        try {
+          await html5Scanner.stop();
+        } catch (e) {}
+        html5Scanner.clear();
+        html5Scanner = null;
+      }
+    },
+    (errorMessage) => {
+      // 読み取り失敗時の細かいエラーは必要に応じてログ出力
+      // console.log(errorMessage);
     }
   );
 });
 
 document.getElementById("btn-stop-scan").addEventListener("click", async () => {
   if (html5Scanner) {
-    await html5Scanner.stop();
+    try {
+      await html5Scanner.stop();
+    } catch (e) {}
     html5Scanner.clear();
+    html5Scanner = null;
   }
 });
 
@@ -518,16 +568,18 @@ document.getElementById("inbound-loc").addEventListener("blur", () => {
 /************************************************************
  *   タブ切り替え
  ************************************************************/
-document.querySelectorAll(".tab-button").forEach(btn => {
+document.querySelectorAll(".tab-button").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+    document
+      .querySelectorAll(".tab-button")
+      .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
 
     const tab = btn.dataset.tab;
 
-    document.querySelectorAll(".card").forEach(c => {
+    document.querySelectorAll(".card").forEach((c) => {
       if (c.id === "qr-scanner-card") return; // スキャナーは常に表示
-      c.style.display = (c.id === tab) ? "block" : "none";
+      c.style.display = c.id === tab ? "block" : "none";
     });
   });
 });

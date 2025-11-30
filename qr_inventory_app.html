@@ -40,6 +40,7 @@
   function renderTable() {
     const data = loadInventory();
     const tbody = document.querySelector("#inventory-table tbody");
+    if (!tbody) return; // tbodyがない場合は処理しない
     tbody.innerHTML = "";
     data.forEach(item => {
       const tr = document.createElement("tr");
@@ -85,14 +86,19 @@
     });
 
     ["tab-inbound", "tab-outbound", "tab-list"].forEach(id => {
-      document.getElementById(id).style.display = (id === target) ? "block" : "none";
+      const elem = document.getElementById(id);
+      if (elem) {
+        elem.style.display = (id === target) ? "block" : "none";
+      }
     });
 
     const qrScannerCard = document.getElementById("qr-scanner-card");
-    if (target === "tab-list") {
-      qrScannerCard.style.display = "none";
-    } else {
-      qrScannerCard.style.display = "block";
+    if (qrScannerCard) {
+      if (target === "tab-list") {
+        qrScannerCard.style.display = "none";
+      } else {
+        qrScannerCard.style.display = "block";
+      }
     }
 
     if (target === "tab-list") {
@@ -226,7 +232,10 @@
     }
     html5QrcodeScanner = null;
     isScanning = false;
-    document.getElementById("qr-reader").innerHTML = ""; // 描画エリアをクリア
+    const readerElem = document.getElementById("qr-reader");
+    if (readerElem) {
+      readerElem.innerHTML = ""; // 描画エリアをクリア
+    }
   }
 
   async function startScanner() {
@@ -281,13 +290,11 @@
   async function stopScanner() { // ★非同期関数に変更
     await cleanupScanner();
   }
-
-  document.getElementById("btn-start-scan").addEventListener("click", startScanner);
-  document.getElementById("btn-stop-scan").addEventListener("click", stopScanner);
-
+  
   // ===== スキャン結果ハンドリング =====
   async function handleScan(decodedText, decodedResult) {
-    document.getElementById("last-scan").value = decodedText;
+    const lastScanEl = document.getElementById("last-scan");
+    if (lastScanEl) lastScanEl.value = decodedText;
 
     let scannedId = decodedText;
     let scannedProductName = "";
@@ -307,14 +314,21 @@
     let localLocation = localItem ? localItem.location : "";
 
     // 入荷タブ
-    document.getElementById("inbound-id").value = scannedId;
-    document.getElementById("inbound-product-name").value = scannedProductName || localProductName;
+    const inboundIdEl = document.getElementById("inbound-id");
+    if (inboundIdEl) inboundIdEl.value = scannedId;
+    
+    const inboundProductEl = document.getElementById("inbound-product-name");
+    if (inboundProductEl) inboundProductEl.value = scannedProductName || localProductName;
 
     // 使用タブ
-    document.getElementById("outbound-id").value = scannedId;
-    document.getElementById("outbound-product-name").value =
-      localProductName || scannedProductName || "未登録のオーダーIDです";
-    document.getElementById("outbound-location").value = localLocation || "未登録";
+    const outboundIdEl = document.getElementById("outbound-id");
+    if (outboundIdEl) outboundIdEl.value = scannedId;
+    
+    const outboundProductEl = document.getElementById("outbound-product-name");
+    if (outboundProductEl) outboundProductEl.value = localProductName || scannedProductName || "未登録のオーダーIDです";
+    
+    const outboundLocationEl = document.getElementById("outbound-location");
+    if (outboundLocationEl) outboundLocationEl.value = localLocation || "未登録";
 
     // GAS（在庫管理シート）の情報で上書き
     const gasInfo = await fetchInventoryByOrder(scannedId);
@@ -325,13 +339,19 @@
       const sheetLocation = gasInfo.location || "";
       const sheetStock = gasInfo.stockQty ?? 0;
 
-      if (sheetProductName) {
-        document.getElementById("inbound-product-name").value = sheetProductName;
-        document.getElementById("outbound-product-name").value = sheetProductName;
+      if (sheetProductName && inboundProductEl) {
+        inboundProductEl.value = sheetProductName;
       }
-      if (sheetLocation) {
-        document.getElementById("inbound-location").value = sheetLocation;
-        document.getElementById("outbound-location").value = sheetLocation;
+      if (sheetProductName && outboundProductEl) {
+        outboundProductEl.value = sheetProductName;
+      }
+
+      const inboundLocationEl = document.getElementById("inbound-location");
+      if (sheetLocation && inboundLocationEl) {
+        inboundLocationEl.value = sheetLocation;
+      }
+      if (sheetLocation && outboundLocationEl) {
+        outboundLocationEl.value = sheetLocation;
       }
 
       if (infoEl) {
@@ -345,147 +365,173 @@
   }
 
   // ===== 入荷登録（ローカル＋GAS・メッセージ表示） =====
-  document.getElementById("btn-inbound-save").addEventListener("click", async () => {
-    const id = document.getElementById("inbound-id").value.trim();
-    const productName = document.getElementById("inbound-product-name").value.trim();
-    const qty = Number(document.getElementById("inbound-qty").value || 0);
-    const inputLocation = document.getElementById("inbound-location").value;
-    const msgEl = document.getElementById("inbound-message");
-    // メッセージを一旦クリア
-    msgEl.textContent = ""; 
+  function setupInboundSave() {
+    const btn = document.getElementById("btn-inbound-save");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      const id = document.getElementById("inbound-id").value.trim();
+      const productName = document.getElementById("inbound-product-name").value.trim();
+      const qty = Number(document.getElementById("inbound-qty").value || 0);
+      const inputLocation = document.getElementById("inbound-location").value;
+      const msgEl = document.getElementById("inbound-message");
+      if (msgEl) msgEl.textContent = ""; 
 
-    if (!id || qty <= 0) {
-      msgEl.textContent = "オーダーIDと数量は必須です。";
-      return;
-    }
+      if (!id || qty <= 0) {
+        if (msgEl) msgEl.textContent = "オーダーIDと数量は必須です。";
+        return;
+      }
 
-    const location = formatLocation(inputLocation);
-    const data = loadInventory();
-    let item = findItemById(data, id);
-    const now = new Date().toLocaleString();
+      const location = formatLocation(inputLocation);
+      const data = loadInventory();
+      let item = findItemById(data, id);
+      const now = new Date().toLocaleString();
 
-    if (!item) {
-      item = {
-        id,
-        productName: productName,
-        partNo: "",
-        lot: "",
-        location,
-        stockQty: 0,
-        lastIn: "",
-        lastOut: ""
-      };
-      data.push(item);
-    }
+      if (!item) {
+        item = {
+          id,
+          productName: productName,
+          partNo: "",
+          lot: "",
+          location,
+          stockQty: 0,
+          lastIn: "",
+          lastOut: ""
+        };
+        data.push(item);
+      }
 
-    if (location) item.location = location;
-    if (productName) item.productName = productName;
+      if (location) item.location = location;
+      if (productName) item.productName = productName;
 
-    item.stockQty = (item.stockQty || 0) + qty;
-    item.lastIn = now;
+      item.stockQty = (item.stockQty || 0) + qty;
+      item.lastIn = now;
 
-    // フォームをクリア（IDは次の作業のために残しておくことが多いですが、品名/数量/棚番をクリア）
-    // document.getElementById("inbound-id").value = ""; 
-    document.getElementById("inbound-location").value = location; // 整形後の棚番をフォームに反映
-    document.getElementById("inbound-product-name").value = "";
-    document.getElementById("inbound-qty").value = "1";
+      // フォームをクリア
+      const inboundLocationEl = document.getElementById("inbound-location");
+      if (inboundLocationEl) inboundLocationEl.value = location; 
+      const inboundProductEl = document.getElementById("inbound-product-name");
+      if (inboundProductEl) inboundProductEl.value = "";
+      const inboundQtyEl = document.getElementById("inbound-qty");
+      if (inboundQtyEl) inboundQtyEl.value = "1";
 
-    saveInventory(data);
-    msgEl.textContent =
-      `✅ 入荷登録完了！（オーダーID: ${id} / +${qty} / 棚番: ${location || '-'}）`;
+      saveInventory(data);
+      if (msgEl) msgEl.textContent =
+        `✅ 入荷登録完了！（オーダーID: ${id} / +${qty} / 棚番: ${location || '-'}）`;
 
-    // 本番シート側へも入荷登録（入出庫履歴→在庫管理反映）
-    const gasResult = await postInboundToGas(id, item.productName || "", location, qty);
-    msgEl.textContent += ` / ${gasResult}`;
-  });
-
-  // ===== 使用/数量調整（ローカル＋GAS・メッセージ表示） =====
-  document.getElementById("btn-outbound-exec").addEventListener("click", async () => {
-    const id = document.getElementById("outbound-id").value.trim();
-    const qty = Number(document.getElementById("outbound-qty").value || 0);
-    const infoEl = document.getElementById("outbound-info");
-    // メッセージを一旦クリア
-    infoEl.textContent = "";
-
-    if (!id || qty <= 0) {
-      infoEl.textContent = "オーダーIDと使用数量は必須です。";
-      return;
-    }
-
-    const data = loadInventory();
-    const item = findItemById(data, id);
-    if (!item) {
-      infoEl.textContent = "該当するオーダーIDの在庫が見つかりません。";
-      return;
-    }
-
-    const current = item.stockQty || 0;
-    if (current < qty) {
-      infoEl.textContent = `在庫不足です。現在の在庫：${current}`;
-      return;
-    }
-
-    item.stockQty = current - qty;
-    item.lastOut = new Date().toLocaleString() + "（使用）";
-    saveInventory(data);
-
-    infoEl.textContent =
-      `✅ 使用を処理しました。（オーダーID: ${id} / -${qty} / 残：${item.stockQty}）`;
-
-    // 本番シート側へも出庫登録
-    const gasResult = await postOutboundToGas(id, item.productName || "", item.location || "", qty);
-    infoEl.textContent += ` / ${gasResult}`;
-  });
-
-  // ===== CSVダウンロード =====
-  document.getElementById("btn-download-csv").addEventListener("click", () => {
-    const data = loadInventory();
-    if (data.length === 0) {
-      alert("データがありません。");
-      return;
-    }
-
-    const header = ["id", "productName", "location", "stockQty", "lastIn", "lastOut"];
-    const rows = [header.join(",")];
-
-    data.forEach(item => {
-      const row = [
-        item.id,
-        item.productName || "",
-        item.location || "",
-        item.stockQty ?? 0,
-        (item.lastIn || "").replace(/,/g, " "),
-        (item.lastOut || "").replace(/,/g, " ")
-      ];
-      rows.push(row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+      // 本番シート側へも入荷登録
+      const gasResult = await postInboundToGas(id, item.productName || "", location, qty);
+      if (msgEl) msgEl.textContent += ` / ${gasResult}`;
     });
-
-    const blob = new Blob([rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "inventory_export.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-
-  // ===== 全データ削除（テスト用） =====
-  document.getElementById("btn-clear-all").addEventListener("click", () => {
-    if (!confirm("⚠️本当に全データを削除しますか？（ローカルストレージ内の全在庫が失われます）")) return;
-    localStorage.removeItem(STORAGE_KEY);
-    renderTable();
-  });
-
-  // ★ 初期化処理: ページロード時に実行し、初期表示を制御する
-  function init() {
-    // デフォルトで「入荷登録」タブを表示
-    switchTab("tab-inbound"); 
-    renderTable();
   }
 
-  // ページロードが完了したら初期化を実行
-  window.addEventListener('load', init);
-  // init();
+  // ===== 使用/数量調整（ローカル＋GAS・メッセージ表示） =====
+  function setupOutboundExec() {
+    const btn = document.getElementById("btn-outbound-exec");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      const id = document.getElementById("outbound-id").value.trim();
+      const qty = Number(document.getElementById("outbound-qty").value || 0);
+      const infoEl = document.getElementById("outbound-info");
+      if (infoEl) infoEl.textContent = "";
+
+      if (!id || qty <= 0) {
+        if (infoEl) infoEl.textContent = "オーダーIDと使用数量は必須です。";
+        return;
+      }
+
+      const data = loadInventory();
+      const item = findItemById(data, id);
+      if (!item) {
+        if (infoEl) infoEl.textContent = "該当するオーダーIDの在庫が見つかりません。";
+        return;
+      }
+
+      const current = item.stockQty || 0;
+      if (current < qty) {
+        if (infoEl) infoEl.textContent = `在庫不足です。現在の在庫：${current}`;
+        return;
+      }
+
+      item.stockQty = current - qty;
+      item.lastOut = new Date().toLocaleString() + "（使用）";
+      saveInventory(data);
+
+      if (infoEl) infoEl.textContent =
+        `✅ 使用を処理しました。（オーダーID: ${id} / -${qty} / 残：${item.stockQty}）`;
+
+      // 本番シート側へも出庫登録
+      const gasResult = await postOutboundToGas(id, item.productName || "", item.location || "", qty);
+      if (infoEl) infoEl.textContent += ` / ${gasResult}`;
+    });
+  }
+
+  // ===== CSVダウンロード =====
+  function setupDownloadCsv() {
+    const btn = document.getElementById("btn-download-csv");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      const data = loadInventory();
+      if (data.length === 0) {
+        alert("データがありません。");
+        return;
+      }
+
+      const header = ["id", "productName", "location", "stockQty", "lastIn", "lastOut"];
+      const rows = [header.join(",")];
+
+      data.forEach(item => {
+        const row = [
+          item.id,
+          item.productName || "",
+          item.location || "",
+          item.stockQty ?? 0,
+          (item.lastIn || "").replace(/,/g, " "),
+          (item.lastOut || "").replace(/,/g, " ")
+        ];
+        rows.push(row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+      });
+
+      const blob = new Blob([rows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "inventory_export.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // ===== 全データ削除（テスト用） =====
+  function setupClearAll() {
+    const btn = document.getElementById("btn-clear-all");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      if (!confirm("⚠️本当に全データを削除しますか？（ローカルストレージ内の全在庫が失われます）")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      renderTable();
+    });
+  }
+  
+  // ===== 初期化処理: DOMContentLoadedを使用し、要素が存在するかチェックを追加 =====
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM content loaded. Starting app initialization.");
+
+    // 初期タブの設定
+    switchTab("tab-inbound"); 
+    renderTable();
+
+    // 各ボタンにイベントリスナーを設定
+    const startScanEl = document.getElementById("btn-start-scan");
+    if (startScanEl) startScanEl.addEventListener("click", startScanner);
+
+    const stopScanEl = document.getElementById("btn-stop-scan");
+    if (stopScanEl) stopScanEl.addEventListener("click", stopScanner);
+
+    setupInboundSave();
+    setupOutboundExec();
+    setupDownloadCsv();
+    setupClearAll();
+  });
 </script>

@@ -153,6 +153,10 @@
     <label>オーダーID</label>
     <input type="text" id="inbound-id" />
 
+    <!-- 追加：機種名（任意） -->
+    <label>機種名（任意）</label>
+    <input type="text" id="inbound-model" />
+
     <label>品名</label>
     <input type="text" id="inbound-name" />
 
@@ -172,6 +176,10 @@
 
     <label>オーダーID</label>
     <input type="text" id="outbound-id" />
+
+    <!-- 追加：機種名（表示のみ） -->
+    <label>機種名</label>
+    <input type="text" id="outbound-model" readonly />
 
     <label>品名</label>
     <input type="text" id="outbound-name" readonly />
@@ -196,6 +204,7 @@
         <thead>
           <tr>
             <th>オーダー</th>
+            <th>機種</th>
             <th>品名</th>
             <th>棚番</th>
             <th>在庫数</th>
@@ -212,9 +221,25 @@
  *   設定
  ************************************************************/
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwuCfqLxQiLMQpt34wHkl4zUNP4M3aAIdrvGfII3feW0fJxhZDRccgDdnCfs2u8K_nwcg/exec"; 
-// 例: https://script.google.com/macros/s/AKfycbxxxxxx/exec
-
 const STORAGE_KEY = "qr_inventory_data_v2";
+
+/************************************************************
+ *   棚番整形関数
+ *   例: "a111" → "A-1-1-1"
+ ************************************************************/
+function normalizeLocation(raw) {
+  if (!raw) return "";
+  let s = raw.trim().toUpperCase();
+
+  // 英数字以外を除去
+  s = s.replace(/[^A-Z0-9]/g, "");
+  if (!s) return "";
+
+  const first = s.charAt(0);
+  const rest = s.slice(1).split("");
+
+  return [first, ...rest].join("-");
+}
 
 /************************************************************
  *   ローカル在庫
@@ -240,9 +265,10 @@ function renderLocalTable() {
   data.forEach(item => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${item.id}</td>
-      <td>${item.name}</td>
-      <td>${item.loc}</td>
+      <td>${item.id || ""}</td>
+      <td>${item.model || ""}</td>
+      <td>${item.name || ""}</td>
+      <td>${item.loc || ""}</td>
       <td>${item.qty}</td>
     `;
     tbody.appendChild(tr);
@@ -252,13 +278,14 @@ function renderLocalTable() {
 /************************************************************
  *   GAS呼び出し（IN）
  ************************************************************/
-async function sendInbound(id, name, loc, qty) {
+async function sendInbound(id, name, loc, qty, model) {
   const body = new URLSearchParams({
     mode: "inbound",
     order: id,
     itemName: name,
     location: loc,
-    qty: qty
+    qty: qty,
+    modelName: model || ""
   });
 
   const res = await fetch(GAS_URL, {
@@ -272,13 +299,14 @@ async function sendInbound(id, name, loc, qty) {
 /************************************************************
  *   GAS呼び出し（OUT）
  ************************************************************/
-async function sendOutbound(id, name, loc, qty) {
+async function sendOutbound(id, name, loc, qty, model) {
   const body = new URLSearchParams({
     mode: "outbound",
     order: id,
     itemName: name,
     location: loc,
-    qty: qty
+    qty: qty,
+    modelName: model || ""
   });
 
   const res = await fetch(GAS_URL, {
@@ -333,12 +361,17 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
       const info = await lookup(order);
 
       if (!info.error) {
-        document.getElementById("inbound-name").value = info.itemName;
-        document.getElementById("inbound-loc").value = info.location;
+        const model = info.modelName || "";
+        const locNorm = normalizeLocation(info.location || "");
 
-        document.getElementById("outbound-id").value = info.order;
-        document.getElementById("outbound-name").value = info.itemName;
-        document.getElementById("outbound-loc").value = info.location;
+        document.getElementById("inbound-name").value = info.itemName || name;
+        document.getElementById("inbound-loc").value = locNorm;
+        document.getElementById("inbound-model").value = model;
+
+        document.getElementById("outbound-id").value = info.order || order;
+        document.getElementById("outbound-name").value = info.itemName || name;
+        document.getElementById("outbound-loc").value = locNorm;
+        document.getElementById("outbound-model").value = model;
       }
     }
   );
@@ -358,7 +391,12 @@ document.getElementById("btn-inbound-save").addEventListener("click", async () =
   const id = document.getElementById("inbound-id").value.trim();
   const name = document.getElementById("inbound-name").value.trim();
   const qty = Number(document.getElementById("inbound-qty").value);
-  const loc = document.getElementById("inbound-loc").value.trim();
+  const model = document.getElementById("inbound-model").value.trim();
+
+  const locRaw = document.getElementById("inbound-loc").value.trim();
+  const loc = normalizeLocation(locRaw);
+  document.getElementById("inbound-loc").value = loc; // 画面上も統一
+
   const msg = document.getElementById("inbound-msg");
 
   if (!id || !qty) {
@@ -370,16 +408,17 @@ document.getElementById("btn-inbound-save").addEventListener("click", async () =
   const data = loadLocal();
   let item = data.find(d => d.id === id);
   if (!item) {
-    item = { id, name, loc, qty: 0 };
+    item = { id, name, loc, qty: 0, model: model || "" };
     data.push(item);
   }
   item.name = name;
   item.loc = loc;
+  item.model = model || item.model || "";
   item.qty += qty;
   saveLocal(data);
 
   // GAS送信
-  const res = await sendInbound(id, name, loc, qty);
+  const res = await sendInbound(id, name, loc, qty, model);
   msg.textContent = "入荷登録：" + (res.ok ? "GAS OK" : "GAS ERROR");
 });
 
@@ -390,7 +429,12 @@ document.getElementById("btn-outbound-save").addEventListener("click", async () 
   const id = document.getElementById("outbound-id").value.trim();
   const name = document.getElementById("outbound-name").value.trim();
   const qty = Number(document.getElementById("outbound-qty").value);
-  const loc = document.getElementById("outbound-loc").value.trim();
+  const model = document.getElementById("outbound-model").value.trim();
+
+  const locRaw = document.getElementById("outbound-loc").value.trim();
+  const loc = normalizeLocation(locRaw);
+  document.getElementById("outbound-loc").value = loc;
+
   const msg = document.getElementById("outbound-msg");
 
   if (!id || !qty) {
@@ -410,8 +454,25 @@ document.getElementById("btn-outbound-save").addEventListener("click", async () 
   saveLocal(data);
 
   // GAS送信
-  const res = await sendOutbound(id, name, loc, qty);
+  const res = await sendOutbound(id, name, loc, qty, model);
   msg.textContent = "出庫処理：" + (res.ok ? "GAS OK" : "GAS ERROR");
+});
+
+/************************************************************
+ *   棚番入力の自動整形（blur 時）
+ ************************************************************/
+document.getElementById("inbound-loc").addEventListener("blur", () => {
+  const input = document.getElementById("inbound-loc");
+  input.value = normalizeLocation(input.value);
+});
+
+/************************************************************
+ *   ローカルデータ削除
+ ************************************************************/
+document.getElementById("btn-clear-local").addEventListener("click", () => {
+  if (!confirm("ローカル在庫データをすべて削除します。よろしいですか？")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  renderLocalTable();
 });
 
 /************************************************************
@@ -426,7 +487,6 @@ document.querySelectorAll(".tab-button").forEach(btn => {
 
     document.querySelectorAll(".card").forEach(c => {
       if (c.id === "qr-scanner-card") return; // スキャナーは常に表示
-
       c.style.display = (c.id === tab) ? "block" : "none";
     });
   });

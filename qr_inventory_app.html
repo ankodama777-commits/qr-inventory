@@ -96,29 +96,6 @@
       font-size: 12px;
       color: #666;
     }
-    .table-wrapper {
-      max-height: 320px;
-      overflow: auto;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      background: #fff;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    th, td {
-      border-bottom: 1px solid #ddd;
-      padding: 4px 3px;
-      text-align: left;
-    }
-    th {
-      background: #f0f0f5;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
   </style>
 </head>
 
@@ -133,7 +110,7 @@
   <div class="tabs">
     <button class="tab-button active" data-tab="tab-inbound">入荷登録</button>
     <button class="tab-button" data-tab="tab-outbound">出庫</button>
-    <button class="tab-button" data-tab="tab-list">ローカル在庫</button>
+    <button class="tab-button" data-tab="tab-view">情報表示</button>
   </div>
 
   <!-- QRスキャナ -->
@@ -153,7 +130,7 @@
     <label>オーダーID</label>
     <input type="text" id="inbound-id" />
 
-    <!-- 追加：機種名（任意） -->
+    <!-- 機種名（任意） -->
     <label>機種名（任意）</label>
     <input type="text" id="inbound-model" />
 
@@ -177,7 +154,6 @@
     <label>オーダーID</label>
     <input type="text" id="outbound-id" />
 
-    <!-- 追加：機種名（表示のみ） -->
     <label>機種名</label>
     <input type="text" id="outbound-model" readonly />
 
@@ -194,34 +170,36 @@
     <div id="outbound-msg" class="small"></div>
   </div>
 
-  <!-- ローカル在庫表示 -->
-  <div id="tab-list" class="card" style="display:none;">
-    <h2>ローカル在庫</h2>
-    <button id="btn-clear-local" class="secondary">ローカルデータ削除</button>
+  <!-- 閲覧専用 情報表示タブ -->
+  <div id="tab-view" class="card" style="display:none;">
+    <h2>情報表示 <span class="small">VIEW</span></h2>
 
-    <div class="table-wrapper" style="margin-top:8px;">
-      <table id="inventory-table">
-        <thead>
-          <tr>
-            <th>オーダー</th>
-            <th>機種</th>
-            <th>品名</th>
-            <th>棚番</th>
-            <th>在庫数</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <label>オーダーID</label>
+    <input type="text" id="view-id" readonly />
+
+    <label>機種名</label>
+    <input type="text" id="view-model" readonly />
+
+    <label>品名</label>
+    <input type="text" id="view-name" readonly />
+
+    <label>棚番</label>
+    <input type="text" id="view-loc" readonly />
+
+    <label>在庫数（GAS側で返却される場合）</label>
+    <input type="text" id="view-qty" readonly />
   </div>
 </div>
+
+<!-- 音声フィードバック用（実際のファイルパスに変更してください） -->
+<audio id="audio-scan" src="scan-ok.mp3" preload="auto"></audio>
+<audio id="audio-success" src="success.mp3" preload="auto"></audio>
 
 <script>
 /************************************************************
  *   設定
  ************************************************************/
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwuCfqLxQiLMQpt34wHkl4zUNP4M3aAIdrvGfII3feW0fJxhZDRccgDdnCfs2u8K_nwcg/exec"; 
-const STORAGE_KEY = "qr_inventory_data_v2";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwuCfqLxQiLMQpt34wHkl4zUNP4M3aAIdrvGfII3feW0fJxhZDRccgDdnCfs2u8K_nwcg/exec";
 
 /************************************************************
  *   棚番整形関数
@@ -242,37 +220,31 @@ function normalizeLocation(raw) {
 }
 
 /************************************************************
- *   ローカル在庫
+ *   フィードバック（バイブ & 音）
  ************************************************************/
-function loadLocal() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  return JSON.parse(raw);
-}
-function saveLocal(d) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-  renderLocalTable();
+function vibrate(pattern) {
+  if (navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
 }
 
-/************************************************************
- *   在庫テーブル表示
- ************************************************************/
-function renderLocalTable() {
-  const data = loadLocal();
-  const tbody = document.querySelector("#inventory-table tbody");
-  tbody.innerHTML = "";
+function playSound(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  } catch (e) {}
+}
 
-  data.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${item.id || ""}</td>
-      <td>${item.model || ""}</td>
-      <td>${item.name || ""}</td>
-      <td>${item.loc || ""}</td>
-      <td>${item.qty}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+function notifyScan() {
+  vibrate(50);                // 軽く1回
+  playSound("audio-scan");
+}
+
+function notifySuccess() {
+  vibrate([40, 60, 40]);      // 少しリッチな振動
+  playSound("audio-success");
 }
 
 /************************************************************
@@ -319,6 +291,14 @@ async function sendOutbound(id, name, loc, qty, model) {
 
 /************************************************************
  *   lookup（QR読み後）
+ *   期待レスポンス例：
+ *   {
+ *     "order": "ABCD-R1-01",
+ *     "itemName": "部材1",
+ *     "location": "A111",
+ *     "modelName": "XXX-1000",
+ *     "stockQty": 10
+ *   }
  ************************************************************/
 async function lookup(order) {
   const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
@@ -344,6 +324,9 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
     async (decoded) => {
       document.getElementById("last-scan").value = decoded;
 
+      // スキャン成功フィードバック
+      notifyScan();
+
       // 形式「オーダー｜品名」
       let order = decoded;
       let name = "";
@@ -353,7 +336,7 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
         name = sp[1].trim();
       }
 
-      // 入荷タブへセット
+      // 入荷タブへセット（初期値）
       document.getElementById("inbound-id").value = order;
       document.getElementById("inbound-name").value = name;
 
@@ -363,15 +346,28 @@ document.getElementById("btn-start-scan").addEventListener("click", async () => 
       if (!info.error) {
         const model = info.modelName || "";
         const locNorm = normalizeLocation(info.location || "");
+        const itemName = info.itemName || name;
+        const stockQty = (info.stockQty !== undefined && info.stockQty !== null)
+          ? info.stockQty
+          : "";
 
-        document.getElementById("inbound-name").value = info.itemName || name;
+        // 入荷タブ
+        document.getElementById("inbound-name").value = itemName;
         document.getElementById("inbound-loc").value = locNorm;
         document.getElementById("inbound-model").value = model;
 
+        // 出庫タブ
         document.getElementById("outbound-id").value = info.order || order;
-        document.getElementById("outbound-name").value = info.itemName || name;
+        document.getElementById("outbound-name").value = itemName;
         document.getElementById("outbound-loc").value = locNorm;
         document.getElementById("outbound-model").value = model;
+
+        // 閲覧専用タブ
+        document.getElementById("view-id").value = info.order || order;
+        document.getElementById("view-model").value = model;
+        document.getElementById("view-name").value = itemName;
+        document.getElementById("view-loc").value = locNorm;
+        document.getElementById("view-qty").value = stockQty;
       }
     }
   );
@@ -404,22 +400,14 @@ document.getElementById("btn-inbound-save").addEventListener("click", async () =
     return;
   }
 
-  // ローカル更新
-  const data = loadLocal();
-  let item = data.find(d => d.id === id);
-  if (!item) {
-    item = { id, name, loc, qty: 0, model: model || "" };
-    data.push(item);
-  }
-  item.name = name;
-  item.loc = loc;
-  item.model = model || item.model || "";
-  item.qty += qty;
-  saveLocal(data);
-
   // GAS送信
   const res = await sendInbound(id, name, loc, qty, model);
-  msg.textContent = "入荷登録：" + (res.ok ? "GAS OK" : "GAS ERROR");
+  if (res.ok) {
+    msg.textContent = "入荷登録：GAS OK";
+    notifySuccess();
+  } else {
+    msg.textContent = "入荷登録：GAS ERROR";
+  }
 });
 
 /************************************************************
@@ -442,20 +430,14 @@ document.getElementById("btn-outbound-save").addEventListener("click", async () 
     return;
   }
 
-  // ローカル更新
-  const data = loadLocal();
-  let item = data.find(d => d.id === id);
-  if (!item) {
-    msg.textContent = "ローカル在庫にありません。";
-    return;
-  }
-  item.qty -= qty;
-  if (item.qty < 0) item.qty = 0;
-  saveLocal(data);
-
   // GAS送信
   const res = await sendOutbound(id, name, loc, qty, model);
-  msg.textContent = "出庫処理：" + (res.ok ? "GAS OK" : "GAS ERROR");
+  if (res.ok) {
+    msg.textContent = "出庫処理：GAS OK";
+    notifySuccess();
+  } else {
+    msg.textContent = "出庫処理：GAS ERROR";
+  }
 });
 
 /************************************************************
@@ -464,15 +446,6 @@ document.getElementById("btn-outbound-save").addEventListener("click", async () 
 document.getElementById("inbound-loc").addEventListener("blur", () => {
   const input = document.getElementById("inbound-loc");
   input.value = normalizeLocation(input.value);
-});
-
-/************************************************************
- *   ローカルデータ削除
- ************************************************************/
-document.getElementById("btn-clear-local").addEventListener("click", () => {
-  if (!confirm("ローカル在庫データをすべて削除します。よろしいですか？")) return;
-  localStorage.removeItem(STORAGE_KEY);
-  renderLocalTable();
 });
 
 /************************************************************
@@ -491,11 +464,6 @@ document.querySelectorAll(".tab-button").forEach(btn => {
     });
   });
 });
-
-/************************************************************
- * 初期表示
- ************************************************************/
-renderLocalTable();
 </script>
 </body>
 </html>

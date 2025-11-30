@@ -247,8 +247,8 @@
   // ===== データ管理（localStorage） =====
   const STORAGE_KEY = "qr_inventory_data_v1";
   
-  // GAS URL（あなたのWebアプリURL）
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzjubBa2sL5wt-AD5dyztSx5-rL-Ez_es7XhK5c5HNOpT-4sjjKmA5-l_bpc53vv9tPuQ/exec";
+  // ★必ずご自身の WebアプリURLに差し替えてください
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxhdUVm0gz4AbkeIA6TqVtt3mSq88VNrz-2MzX95m7xovETymU8C7KTv31zS2DT3UAvYg/exec";
 
   // ===== ローカル在庫管理 =====
   function loadInventory() {
@@ -351,9 +351,10 @@
     }
   }
 
-  // ===== GAS 書き込み：入荷・出庫を入出庫履歴へ登録 =====
+  // ===== GAS 書き込み：入荷・出庫（結果メッセージを返す版） =====
   async function postInboundToGas(order, itemName, location, qty) {
-    if (!GAS_URL) return;
+    if (!GAS_URL) return "GAS_URL が設定されていません";
+
     const body = new URLSearchParams({
       mode: 'inbound',
       order,
@@ -361,23 +362,36 @@
       location,
       qty: String(qty)
     });
+
     try {
       const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body
       });
-      const data = await res.json();
-      if (!data.ok) {
-        console.warn('GAS inbound error:', data.error);
+
+      const text = await res.text(); // まずは生テキストで読む
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        // JSONでなければそのまま返す
+        return `GAS応答(非JSON)：${text}`;
+      }
+
+      if (data.ok) {
+        return "GAS連携：OK（履歴に登録されたはずです）";
+      } else {
+        return `GAS連携エラー：${data.error || text}`;
       }
     } catch (err) {
-      console.error('GAS inbound fetch error', err);
+      return `GAS通信エラー：${err}`;
     }
   }
 
   async function postOutboundToGas(order, itemName, location, qty) {
-    if (!GAS_URL) return;
+    if (!GAS_URL) return "GAS_URL が設定されていません";
+
     const body = new URLSearchParams({
       mode: 'outbound',
       order,
@@ -385,18 +399,29 @@
       location,
       qty: String(qty)
     });
+
     try {
       const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body
       });
-      const data = await res.json();
-      if (!data.ok) {
-        console.warn('GAS outbound error:', data.error);
+
+      const text = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        return `GAS応答(非JSON)：${text}`;
+      }
+
+      if (data.ok) {
+        return "GAS連携：OK（履歴に登録されたはずです）";
+      } else {
+        return `GAS連携エラー：${data.error || text}`;
       }
     } catch (err) {
-      console.error('GAS outbound fetch error', err);
+      return `GAS通信エラー：${err}`;
     }
   }
 
@@ -554,7 +579,7 @@
     }
   }
 
-  // ===== 入荷登録（ローカル＋GAS） =====
+  // ===== 入荷登録（ローカル＋GAS・メッセージ表示） =====
   document.getElementById("btn-inbound-save").addEventListener("click", async () => {
     const id = document.getElementById("inbound-id").value.trim();
     const productName = document.getElementById("inbound-product-name").value.trim();
@@ -601,10 +626,11 @@
       `入荷登録しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / +${qty} / 棚番: ${location || '-'}）`;
 
     // 本番シート側へも入荷登録（入出庫履歴→在庫管理反映）
-    await postInboundToGas(id, item.productName || "", location, qty);
+    const gasResult = await postInboundToGas(id, item.productName || "", location, qty);
+    msgEl.textContent += ` / ${gasResult}`;
   });
 
-  // ===== 使用/数量調整（ローカル＋GAS） =====
+  // ===== 使用/数量調整（ローカル＋GAS・メッセージ表示） =====
   document.getElementById("btn-outbound-exec").addEventListener("click", async () => {
     const id = document.getElementById("outbound-id").value.trim();
     const qty = Number(document.getElementById("outbound-qty").value || 0);
@@ -636,7 +662,8 @@
       `使用を処理しました。（オーダーID: ${id} / 品名: ${item.productName || '-'} / 棚番: ${item.location || '-'} / -${qty} / 残：${item.stockQty}）`;
 
     // 本番シート側へも出庫登録
-    await postOutboundToGas(id, item.productName || "", item.location || "", qty);
+    const gasResult = await postOutboundToGas(id, item.productName || "", item.location || "", qty);
+    infoEl.textContent += ` / ${gasResult}`;
   });
 
   // ===== CSVダウンロード =====
@@ -685,4 +712,3 @@
 </script>
 </body>
 </html>
-

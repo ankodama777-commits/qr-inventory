@@ -1,252 +1,3 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <title>QR在庫管理ミニアプリ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
-  <style>
-    /* ===== 修正版 CSS（ネイビー＆グリーン） ===== */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f0f0f5; /* 背景を明るいグレーに維持 */
-      color: #222;
-    }
-    header {
-      background: #003366; /* ヘッダー背景を濃いネイビーに変更 */
-      color: #fff;
-      padding: 12px 16px;
-      text-align: center;
-      font-size: 18px;
-      font-weight: 600;
-      position: sticky; /* ヘッダーを固定 */
-      top: 0;
-      z-index: 100;
-    }
-    .container {
-      padding: 12px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    .tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 10px;
-      overflow-x: auto;
-    }
-    .tab-button {
-      flex: 1;
-      padding: 8px;
-      border-radius: 999px;
-      border: none;
-      background: #e0e0e5;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-    .tab-button.active {
-      background: #38761d; /* アクティブタブを濃いグリーンに変更 */
-      color: #fff;
-      font-weight: 600;
-    }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      margin-bottom: 12px;
-    }
-    .card h2 {
-      font-size: 16px;
-      margin: 0 0 8px;
-    }
-    label {
-      display: block;
-      font-size: 13px;
-      margin-top: 6px;
-    }
-    input, select, button, textarea {
-      font-family: inherit;
-      font-size: 14px;
-    }
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      box-sizing: border-box;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-top: 3px;
-    }
-    button.primary {
-      background: #38761d; /* プライマリボタンを濃いグリーンに変更 */
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      padding: 8px 16px;
-      margin-top: 10px;
-    }
-    button.secondary {
-      background: #e0e0e5;
-      border: none;
-      border-radius: 999px;
-      padding: 8px 12px;
-      margin-top: 10px;
-      font-size: 12px;
-    }
-    .small {
-      font-size: 12px;
-      color: #666;
-    }
-
-    .field-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-    }
-    .field-row > div {
-      flex: 1;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    th, td {
-      border-bottom: 1px solid #ddd;
-      padding: 4px 3px;
-      text-align: left;
-    }
-    th {
-      background: #f0f0f5;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-    .table-wrapper {
-      max-height: 320px;
-      overflow: auto;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      background: #fff;
-    }
-    .badge {
-      display: inline-block;
-      padding: 2px 6px;
-      font-size: 11px;
-      border-radius: 999px;
-      background: #eee;
-      margin-left: 4px;
-    }
-    .master-loader {
-      display: none !important;
-    }
-  </style>
-</head>
-<body>
-<header>
-  QR在庫管理ミニアプリ
-</header>
-
-<div class="container">
-  <div class="tabs">
-    <button class="tab-button active" data-tab="tab-inbound">入荷登録</button>
-    <button class="tab-button" data-tab="tab-outbound">使用・数量調整</button>
-    <button class="tab-button" data-tab="tab-list">データ一覧</button>
-  </div>
-
-    <div class="card" id="qr-scanner-card">
-    <h2>QRスキャン</h2>
-    <div class="small">
-      「**スキャン開始**」を押すとカメラが起動します。<br>
-      QR形式：「<strong>オーダーID | 品名</strong>」または「<strong>オーダーID</strong>」
-    </div>
-    <button id="btn-start-scan" class="primary">スキャン開始</button>
-    <button id="btn-stop-scan" class="secondary">停止</button>
-    <div id="qr-reader" style="margin-top:10px;"></div>
-    <label>直近に読み取った内容</label>
-    <input type="text" id="last-scan" readonly />
-  </div>
-
-  <div id="tab-inbound" class="card">
-    <h2>入荷登録 <span class="badge">IN</span></h2>
-    <div class="small">
-      QRコードを読み込んだ後、「オーダーID」「品名」「数量」「棚番」を入力して登録します。
-    </div>
-    <label>オーダーID（QR内容から自動分割）</label>
-    <input type="text" id="inbound-id" placeholder="QR読み取りで自動入力されます" />
-    
-    <label>品名（QR内容から自動分割）</label> 
-    <input type="text" id="inbound-product-name" placeholder="例：六角ボルト M8x20 2025年発注分" />
-
-    <div class="field-row">
-      <div>
-        <label>数量</label>
-        <input type="number" id="inbound-qty" min="1" value="1" />
-      </div>
-      <div>
-        <label>棚番</label>
-        <input type="text" id="inbound-location" placeholder="例：A111またはA-1-1-1" />
-      </div>
-    </div>
-
-    <button id="btn-inbound-save" class="primary">入荷を登録</button>
-    <div id="inbound-message" class="small"></div>
-  </div>
-
-  <div id="tab-outbound" class="card" style="display:none;">
-    <h2>使用・数量調整 <span class="badge">USED</span></h2>
-    <div class="small">
-      QRコードを読み込んだ後、使用した数量を入力し、在庫から差し引きます。
-    </div>
-
-    <label>オーダーID（QR内容から自動分割）</label>
-    <input type="text" id="outbound-id" placeholder="QR読み取りで自動入力されます" />
-
-    <label>品名</label>
-    <input type="text" id="outbound-product-name" placeholder="該当IDの品名が表示されます" readonly />
-    
-    <label>登録棚番</label> 
-    <input type="text" id="outbound-location" placeholder="該当IDの登録棚番が表示されます" readonly /> 
-
-    <label>使用数量</label>
-    <input type="number" id="outbound-qty" min="1" value="1" />
-
-    <button id="btn-outbound-exec" class="primary">使用処理</button>
-    <div id="outbound-info" class="small"></div>
-  </div>
-
-  <div id="tab-list" class="card" style="display:none;">
-    <h2>在庫一覧 <span class="badge">LIST</span></h2>
-    <div class="small">
-      ローカルに保存されているデータを表示します。  
-      「CSVダウンロード」でExcelに取り込めます。
-    </div>
-
-    <div class="master-loader"></div> 
-
-    <button id="btn-download-csv" class="secondary">在庫データCSVダウンロード</button>
-    <button id="btn-clear-all" class="secondary">全在庫データ削除（テスト用）</button>
-    <div class="table-wrapper" style="margin-top:8px;">
-      <table id="inventory-table">
-        <thead>
-          <tr>
-            <th>オーダーID</th> 
-            <th>品名</th>
-            <th>棚番</th>
-            <th>在庫数</th>
-            <th>最終入荷</th>
-            <th>最終出庫</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 <script>
   // ===== データ管理（localStorage） =====
   const STORAGE_KEY = "qr_inventory_data_v1";
@@ -321,30 +72,38 @@
     return cleanInput;
   }
 
-  // ===== タブ切り替え =====
+  // ===== タブ切り替え制御関数 =====
+  async function switchTab(target) {
+    // スキャンを確実に停止
+    await stopScanner();
+
+    document.querySelectorAll(".tab-button").forEach(b => {
+      b.classList.remove("active");
+      if (b.getAttribute("data-tab") === target) {
+        b.classList.add("active");
+      }
+    });
+
+    ["tab-inbound", "tab-outbound", "tab-list"].forEach(id => {
+      document.getElementById(id).style.display = (id === target) ? "block" : "none";
+    });
+
+    const qrScannerCard = document.getElementById("qr-scanner-card");
+    if (target === "tab-list") {
+      qrScannerCard.style.display = "none";
+    } else {
+      qrScannerCard.style.display = "block";
+    }
+
+    if (target === "tab-list") {
+      renderTable(); // リストタブ表示時にデータを再描画
+    }
+  }
+  
+  // タブボタンにイベントリスナーを設定
   document.querySelectorAll(".tab-button").forEach(btn => {
-    btn.addEventListener("click", async () => { // ★非同期処理(await)を追加
-      // スキャンを確実に停止
-      await stopScanner();
-
-      document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-
-      const target = btn.getAttribute("data-tab");
-      ["tab-inbound", "tab-outbound", "tab-list"].forEach(id => {
-        document.getElementById(id).style.display = (id === target) ? "block" : "none";
-      });
-
-      const qrScannerCard = document.getElementById("qr-scanner-card");
-      if (target === "tab-list") {
-        qrScannerCard.style.display = "none";
-      } else {
-        qrScannerCard.style.display = "block";
-      }
-
-      if (target === "tab-list") {
-        renderTable(); // リストタブ表示時にデータを再描画
-      }
+    btn.addEventListener("click", () => {
+      switchTab(btn.getAttribute("data-tab"));
     });
   });
 
@@ -719,8 +478,14 @@
     renderTable();
   });
 
-  // 初期表示
-  renderTable();
+  // ★ 初期化処理: ページロード時に実行し、初期表示を制御する
+  function init() {
+    // デフォルトで「入荷登録」タブを表示
+    switchTab("tab-inbound"); 
+    renderTable();
+  }
+
+  // ページロードが完了したら初期化を実行
+  window.addEventListener('load', init);
+  // init();
 </script>
-</body>
-</html>

@@ -5,6 +5,7 @@
   <title>QR在庫管理ミニアプリ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- QR読み取りライブラリ -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
   <style>
@@ -242,10 +243,10 @@
     <div id="inbound-msg" class="small"></div>
   </div>
 
-  <!-- 使用 / 数量調整（出庫＋情報表示を統合） -->
+  <!-- 使用 / 数量調整 -->
   <div id="tab-use" class="card" style="display:none;">
 
-    <!-- ★ 棚番を大きく表示：上は何も置かない（空） -->
+    <!-- 棚番：上は空、そのままドーンと表示 -->
     <div id="big-location" class="big-location-box"></div>
 
     <!-- オーダー + 機種名（横並び） -->
@@ -301,14 +302,10 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjR
 function normalizeLocation(raw) {
   if (!raw) return "";
   let s = raw.trim().toUpperCase();
-
-  // 英数字以外を除去
-  s = s.replace(/[^A-Z0-9]/g, "");
+  s = s.replace(/[^A-Z0-9]/g, ""); // 英数字以外を除去
   if (!s) return "";
-
   const first = s.charAt(0);
   const rest = s.slice(1).split("");
-
   return [first, ...rest].join("-");
 }
 
@@ -362,7 +359,7 @@ async function sendInbound(id, name, loc, qty, model) {
 }
 
 /************************************************************
- *   GAS呼び出し（OUT / 使用・調整）
+ *   GAS呼び出し（OUT）
  ************************************************************/
 async function sendOutbound(id, name, loc, qty, model) {
   const body = new URLSearchParams({
@@ -406,46 +403,239 @@ if (scanModeToggle) {
 }
 
 /************************************************************
- *   QRスキャン
+ *   QRスキャン開始
  ************************************************************/
-document.getElementById("btn-start-scan").addEventListener("click", async () => {
-  // 既存インスタンスがあれば停止してクリア
-  if (html5Scanner) {
-    try {
-      await html5Scanner.stop();
-    } catch (e) {}
-    html5Scanner.clear();
-    html5Scanner = null;
-  }
+const btnStartScan = document.getElementById("btn-start-scan");
+if (btnStartScan) {
+  btnStartScan.addEventListener("click", async () => {
+    // 既存インスタンスがあれば停止してクリア
+    if (html5Scanner) {
+      try { await html5Scanner.stop(); } catch (e) {}
+      html5Scanner.clear();
+      html5Scanner = null;
+    }
 
-  html5Scanner = new Html5Qrcode("qr-reader");
+    // ライブラリが読み込めていない場合のガード
+    if (typeof Html5Qrcode === "undefined") {
+      alert("カメラライブラリ（html5-qrcode）が読み込めていません。ネットワークやURLを確認してください。");
+      return;
+    }
 
-  html5Scanner.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: 200 },
-    async (decoded) => {
-      // 直近読み取り表示
-      document.getElementById("last-scan").textContent = decoded;
+    html5Scanner = new Html5Qrcode("qr-reader");
 
-      // スキャン成功フィードバック
-      notifyScan();
+    html5Scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 200 },
+      async (decoded) => {
+        const lastScan = document.getElementById("last-scan");
+        if (lastScan) lastScan.textContent = decoded;
 
-      // 形式「オーダー｜品名」
-      let order = decoded;
-      let name = "";
-      if (decoded.includes("|")) {
-        const sp = decoded.split("|");
-        order = sp[0].trim();
-        name = sp[1].trim();
+        notifyScan();
+
+        // 形式「オーダー｜品名」
+        let order = decoded;
+        let name = "";
+        if (decoded.includes("|")) {
+          const sp = decoded.split("|");
+          order = sp[0].trim();
+          name  = sp[1].trim();
+        }
+
+        // 入荷タブ：初期値
+        const inId   = document.getElementById("inbound-id");
+        const inName = document.getElementById("inbound-name");
+        if (inId)   inId.value = order;
+        if (inName) inName.value = name;
+
+        // lookupして詳細取得
+        let info = {};
+        try {
+          info = await lookup(order);
+        } catch (e) {
+          info = { error: "lookup failed" };
+        }
+
+        if (!info.error) {
+          const model   = info.modelName || "";
+          const locNorm = normalizeLocation(info.location || "");
+          const itemName = info.itemName || name;
+          const stockQty =
+            info.stockQty !== undefined && info.stockQty !== null
+              ? info.stockQty
+              : "";
+
+          // 入荷タブ
+          if (inName) inName.value = itemName;
+          const inLoc   = document.getElementById("inbound-loc");
+          const inModel = document.getElementById("inbound-model");
+          if (inLoc)   inLoc.value   = locNorm;
+          if (inModel) inModel.value = model;
+
+          // 使用 / 調整タブ
+          const useId    = document.getElementById("use-id");
+          const useName  = document.getElementById("use-name");
+          const useLoc   = document.getElementById("use-loc");
+          const useModel = document.getElementById("use-model");
+          const useStock = document.getElementById("use-stock");
+          if (useId)    useId.value    = info.order || order;
+          if (useName)  useName.value  = itemName;
+          if (useLoc)   useLoc.value   = locNorm;
+          if (useModel) useModel.value = model;
+          if (useStock) useStock.value = stockQty;
+
+          const bigLoc = document.getElementById("big-location");
+          if (bigLoc) bigLoc.textContent = locNorm;
+        } else {
+          const bigLoc = document.getElementById("big-location");
+          const useStock = document.getElementById("use-stock");
+          if (bigLoc)   bigLoc.textContent = "";
+          if (useStock) useStock.value = "";
+        }
+
+        // 単発モードならここでカメラ停止
+        if (!continuousScan && html5Scanner) {
+          try { await html5Scanner.stop(); } catch (e) {}
+          html5Scanner.clear();
+          html5Scanner = null;
+        }
+      },
+      (errorMessage) => {
+        // 読み取り失敗時のログ（必要ならconsoleで確認）
+        // console.log(errorMessage);
       }
+    );
+  });
+}
 
-      // 入荷タブ：初期値
-      document.getElementById("inbound-id").value = order;
-      document.getElementById("inbound-name").value = name;
+/************************************************************
+ *   QRスキャン停止
+ ************************************************************/
+const btnStopScan = document.getElementById("btn-stop-scan");
+if (btnStopScan) {
+  btnStopScan.addEventListener("click", async () => {
+    if (html5Scanner) {
+      try { await html5Scanner.stop(); } catch (e) {}
+      html5Scanner.clear();
+      html5Scanner = null;
+    }
+  });
+}
 
-      // lookup
-      const info = await lookup(order);
+/************************************************************
+ *   入荷登録
+ ************************************************************/
+const btnInboundSave = document.getElementById("btn-inbound-save");
+if (btnInboundSave) {
+  btnInboundSave.addEventListener("click", async () => {
+    const id    = (document.getElementById("inbound-id")   || {}).value?.trim() ?? "";
+    const name  = (document.getElementById("inbound-name") || {}).value?.trim() ?? "";
+    const qtyEl = document.getElementById("inbound-qty");
+    const model = (document.getElementById("inbound-model") || {}).value?.trim() ?? "";
 
-      if (!info.error) {
-        const model = info.modelName || "";
-        const locNorm = normaliz
+    const qty = qtyEl ? Number(qtyEl.value) : 0;
+
+    const locInput = document.getElementById("inbound-loc");
+    let locRaw = locInput ? locInput.value.trim() : "";
+    const loc = normalizeLocation(locRaw);
+    if (locInput) locInput.value = loc;
+
+    const msg = document.getElementById("inbound-msg");
+    if (!id || !qty) {
+      if (msg) msg.textContent = "IDと数量は必須です。";
+      return;
+    }
+
+    let res = {};
+    try {
+      res = await sendInbound(id, name, loc, qty, model);
+    } catch (e) {
+      res = { ok: false };
+    }
+
+    if (msg) {
+      if (res.ok) {
+        msg.textContent = "入荷登録：GAS OK";
+        notifySuccess();
+      } else {
+        msg.textContent = "入荷登録：GAS ERROR";
+      }
+    }
+  });
+}
+
+/************************************************************
+ *   使用 / 数量調整
+ ************************************************************/
+const btnUseSave = document.getElementById("btn-use-save");
+if (btnUseSave) {
+  btnUseSave.addEventListener("click", async () => {
+    const id    = (document.getElementById("use-id")   || {}).value?.trim() ?? "";
+    const name  = (document.getElementById("use-name") || {}).value?.trim() ?? "";
+    const qtyEl = document.getElementById("use-qty");
+    const model = (document.getElementById("use-model") || {}).value?.trim() ?? "";
+
+    const qty = qtyEl ? Number(qtyEl.value) : 0;
+
+    const locInput = document.getElementById("use-loc");
+    let locRaw = locInput ? locInput.value.trim() : "";
+    const loc = normalizeLocation(locRaw);
+    if (locInput) locInput.value = loc;
+
+    const bigLoc = document.getElementById("big-location");
+    if (bigLoc) bigLoc.textContent = loc;
+
+    const msg = document.getElementById("use-msg");
+    if (!id || !qty) {
+      if (msg) msg.textContent = "IDと使用数量は必須です。";
+      return;
+    }
+
+    let res = {};
+    try {
+      res = await sendOutbound(id, name, loc, qty, model);
+    } catch (e) {
+      res = { ok: false };
+    }
+
+    if (msg) {
+      if (res.ok) {
+        msg.textContent = "使用 / 数量調整：GAS OK";
+        notifySuccess();
+      } else {
+        msg.textContent = "使用 / 数量調整：GAS ERROR";
+      }
+    }
+  });
+}
+
+/************************************************************
+ *   棚番入力の自動整形（入荷側のみ手入力可能）
+ ************************************************************/
+const inboundLocInput = document.getElementById("inbound-loc");
+if (inboundLocInput) {
+  inboundLocInput.addEventListener("blur", () => {
+    inboundLocInput.value = normalizeLocation(inboundLocInput.value);
+  });
+}
+
+/************************************************************
+ *   タブ切り替え
+ ************************************************************/
+document.querySelectorAll(".tab-button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document
+      .querySelectorAll(".tab-button")
+      .forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    const tab = btn.dataset.tab;
+
+    document.querySelectorAll(".card").forEach((c) => {
+      if (c.id === "qr-scanner-card") return; // スキャナーは常に表示
+      c.style.display = (c.id === tab) ? "block" : "none";
+    });
+  });
+});
+</script>
+</body>
+</html>

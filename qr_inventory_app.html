@@ -34,7 +34,6 @@
     .last-scan-box { margin-top: 4px; padding: 6px 8px; min-height: 32px; border-radius: 8px; background: #f0f0f5; border: 1px dashed #bbb; font-size: 13px; color: #333; word-break: break-all; pointer-events: none; }
     .big-location-box { margin-top: 4px; margin-bottom: 8px; padding: 12px 8px; border-radius: 12px; background: #fff7e0; border: 2px solid #f5b800; font-size: 24px; font-weight: 700; text-align: center; letter-spacing: 0.08em; color: #b36b00; min-height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
-    /* エラー表示用 */
     .error-text { color: #b00020; font-weight: 600; }
     .error-input { border-color: #b00020 !important; background: #ffe6e6; }
   </style>
@@ -95,7 +94,7 @@
       </div>
       <div class="field-cell">
         <label>数量</label>
-        <!-- 初期値を 1 → 0 に変更 -->
+        <!-- 初期値は 0 にして、D列（plannedQty）を反映させる -->
         <input type="number" id="inbound-qty" min="0" value="0" />
       </div>
     </div>
@@ -140,16 +139,13 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v1.4"; // デバッグ削除 + D列数量を入荷にセット + 数量必須チェック
+const APP_VERSION = "v1.6"; // D列 plannedQty を入荷数量に反映
 // ★★★ ここを最新のGASデプロイURLに置き換えてください ★★★
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
-// ページロード時にバージョン番号をヘッダーに表示
 document.addEventListener("DOMContentLoaded", () => {
   const versionEl = document.getElementById("app-version-display");
-  if (versionEl) {
-    versionEl.textContent = APP_VERSION;
-  }
+  if (versionEl) versionEl.textContent = APP_VERSION;
 });
 
 /************************************************************
@@ -158,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function normalizeLocation(raw) {
   if (!raw) return "";
   let s = raw.trim().toUpperCase();
-  s = s.replace(/[^A-Z0-9]/g, ""); 
+  s = s.replace(/[^A-Z0-9]/g, "");
   if (!s) return "";
   const first = s.charAt(0);
   const rest = s.slice(1).split("");
@@ -166,9 +162,7 @@ function normalizeLocation(raw) {
 }
 
 function vibrate(pattern) {
-  if (navigator.vibrate) {
-    navigator.vibrate(pattern);
-  }
+  if (navigator.vibrate) navigator.vibrate(pattern);
 }
 
 function playSound(id) {
@@ -202,7 +196,7 @@ async function sendInbound(id, name, loc, qty, model) {
     qty: qty,
     modelName: model || ""
   });
-  const res = await fetch(GAS_URL, { method: "POST", body: body });
+  const res = await fetch(GAS_URL, { method: "POST", body });
   return await res.json();
 }
 
@@ -215,7 +209,7 @@ async function sendOutbound(id, name, loc, qty, model) {
     qty: qty,
     modelName: model || ""
   });
-  const res = await fetch(GAS_URL, { method: "POST", body: body });
+  const res = await fetch(GAS_URL, { method: "POST", body });
   return await res.json();
 }
 
@@ -270,7 +264,7 @@ if (btnStartScan) {
         let order = decoded;
         let name  = "";
         let model = "";
-        
+
         let delimiter = "";
         if (decoded.includes("|")) {
           delimiter = "|";
@@ -279,25 +273,23 @@ if (btnStartScan) {
         } else if (decoded.includes("-")) {
           delimiter = "-";
         }
-        
+
         let sp = [];
         if (delimiter) {
           sp = decoded.split(delimiter).map(s => s.trim());
         }
-        
+
         if (delimiter === "-") {
-          // 例: "ABCD-00-01-機種名-品名"
+          // 例: ABCD-00-01-機種名-品名
           if (sp.length >= 3) {
-            // オーダーIDは最初の3要素のみ
             order = sp.slice(0, 3).join("-");
-            // 4つ目以降を機種名・品名として扱う
             model = sp[3] || "";
             name  = sp[4] || "";
           } else {
             order = decoded;
           }
         } else if (delimiter === "|" || delimiter === "/") {
-          // 例: "ABCD-00-01|品名|機種名" など
+          // 例: ABCD-00-01|品名|機種名
           if (sp.length >= 3) {
             order = sp[0] || decoded;
             name  = sp[1] || "";
@@ -313,7 +305,7 @@ if (btnStartScan) {
           order = decoded;
         }
 
-        // 入力要素の取得
+        // 要素取得
         const inId     = document.getElementById("inbound-id");
         const inName   = document.getElementById("inbound-name");
         const inModel  = document.getElementById("inbound-model");
@@ -326,50 +318,51 @@ if (btnStartScan) {
         const useStock = document.getElementById("use-stock");
         const bigLoc   = document.getElementById("big-location");
 
-        // 入荷タブ：QRから分離した値をひとまずセット
+        // 入荷タブ初期値
         if (inId)    inId.value    = order;
         if (inName)  inName.value  = name;
         if (inModel) inModel.value = model;
         if (inLoc)   inLoc.value   = "";
+        if (inQtyEl) inQtyEl.value = 0;
 
-        // lookupして詳細取得
+        // lookup 実行
         let info = {};
-        try { 
-          info = await lookup(order); 
-        } catch (e) { 
-          info = { error: "lookup failed" }; 
+        try {
+          info = await lookup(order);
+        } catch (e) {
+          info = { error: "lookup failed" };
         }
 
         if (!info.error) {
-          // GAS側から返された情報
-          const gasModel = info.modelName || model;
-          const locNorm  = normalizeLocation(info.location || "");
-          const itemName = info.itemName || name;
-          const stockQty = (info.stockQty !== undefined && info.stockQty !== null) ? info.stockQty : "";
+          const gasModel    = info.modelName || model;
+          const locNorm     = normalizeLocation(info.location || "");
+          const itemName    = info.itemName || name;
+          const plannedQty  = (info.plannedQty !== undefined && info.plannedQty !== null) ? info.plannedQty : "";
+          const lastInQty   = (info.lastInQty !== undefined && info.lastInQty !== null) ? info.lastInQty : "";
 
-          // 入荷タブ (オーダーはQR解析結果を採用)
+          // 入荷タブ
           if (inId)    inId.value    = order;
           if (inName)  inName.value  = itemName;
           if (inLoc)   inLoc.value   = locNorm;
           if (inModel) inModel.value = gasModel;
-          // ★ D列(数量)を入荷数量に反映
+
           if (inQtyEl) {
-            if (stockQty !== "" && !isNaN(stockQty)) {
-              inQtyEl.value = stockQty;
+            if (plannedQty !== "" && !isNaN(plannedQty)) {
+              inQtyEl.value = plannedQty;  // D列の値を反映
             } else {
-              inQtyEl.value = 0; // D列が空なら 0 のまま（手入力必須）
+              inQtyEl.value = 0;           // 空なら 0 のまま
             }
           }
 
-          // 使用 / 調整タブ
+          // 使用 / 調整タブ（おまけ表示）
           if (useId)    useId.value    = order;
           if (useName)  useName.value  = itemName;
           if (useLoc)   useLoc.value   = locNorm;
           if (useModel) useModel.value = gasModel;
-          if (useStock) useStock.value = stockQty;
+          if (useStock) useStock.value = lastInQty; // G列の入荷数を現在庫的に表示
           if (bigLoc)   bigLoc.textContent = locNorm;
         } else {
-          // lookup失敗時はQR情報のみセット
+          // lookup失敗時
           if (useId)    useId.value    = order;
           if (useName)  useName.value  = name;
           if (useModel) useModel.value = model;
@@ -386,7 +379,7 @@ if (btnStartScan) {
         }
       },
       (errorMessage) => {
-        // スキャンエラー時は特に何もしない（必要であればログ出力）
+        // スキャンエラー時は必要ならログへ
       }
     );
   });
@@ -423,16 +416,12 @@ if (btnInboundSave) {
     if (locInput) locInput.value = loc;
     const msg   = document.getElementById("inbound-msg");
 
-    // いったんエラー表示をリセット
     if (msg) {
       msg.textContent = "";
       msg.classList.remove("error-text");
     }
-    if (qtyEl) {
-      qtyEl.classList.remove("error-input");
-    }
+    if (qtyEl) qtyEl.classList.remove("error-input");
 
-    // ID必須チェック
     if (!id) {
       if (msg) {
         msg.textContent = "オーダーIDが空のため登録できません。";
@@ -441,32 +430,30 @@ if (btnInboundSave) {
       return;
     }
 
-    // 数量必須チェック（0または未入力はNG）
+    // 数量 0 or 未入力 → エラー
     if (!Number.isFinite(qty) || qty <= 0) {
       if (msg) {
         msg.textContent = "数量が未入力のため登録できません。D列が空のオーダーは、この画面で正しい数量を入力してください。";
         msg.classList.add("error-text");
       }
-      if (qtyEl) {
-        qtyEl.classList.add("error-input");
-      }
+      if (qtyEl) qtyEl.classList.add("error-input");
       return;
     }
 
     let res = {};
-    try { 
-      res = await sendInbound(id, name, loc, qty, model); 
-    } catch (e) { 
-      res = { ok: false }; 
+    try {
+      res = await sendInbound(id, name, loc, qty, model);
+    } catch (e) {
+      res = { ok: false };
     }
 
     if (msg) {
-      if (res.ok) { 
+      if (res.ok) {
         msg.textContent = "入荷登録：GAS OK";
         msg.classList.remove("error-text");
         if (qtyEl) qtyEl.classList.remove("error-input");
-        notifySuccess(); 
-      } else { 
+        notifySuccess();
+      } else {
         msg.textContent = "入荷登録：GAS ERROR";
         msg.classList.add("error-text");
       }
@@ -499,18 +486,18 @@ if (btnUseSave) {
     }
 
     let res = {};
-    try { 
-      res = await sendOutbound(id, name, loc, qty, model); 
-    } catch (e) { 
-      res = { ok: false }; 
+    try {
+      res = await sendOutbound(id, name, loc, qty, model);
+    } catch (e) {
+      res = { ok: false };
     }
 
     if (msg) {
-      if (res.ok) { 
-        msg.textContent = "使用 / 数量調整：GAS OK"; 
-        notifySuccess(); 
-      } else { 
-        msg.textContent = "使用 / 数量調整：GAS ERROR"; 
+      if (res.ok) {
+        msg.textContent = "使用 / 数量調整：GAS OK";
+        notifySuccess();
+      } else {
+        msg.textContent = "使用 / 数量調整：GAS ERROR";
       }
     }
   });
@@ -537,7 +524,7 @@ document.querySelectorAll(".tab-button").forEach((btn) => {
     btn.classList.add("active");
     const tab = btn.dataset.tab;
     document.querySelectorAll(".card").forEach((c) => {
-      if (c.id === "qr-scanner-card") return; 
+      if (c.id === "qr-scanner-card") return;
       c.style.display = (c.id === tab) ? "block" : "none";
     });
   });

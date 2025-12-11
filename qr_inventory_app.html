@@ -8,180 +8,32 @@
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f5f5f7;
-      color: #222;
-    }
-    header {
-      background: #1d1d1f;
-      color: #fff;
-      padding: 12px 16px;
-      text-align: center;
-      font-size: 18px;
-      font-weight: 600;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-    }
-    .header-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 0;
-    }
-    .header-version {
-      font-size: 12px;
-      font-weight: 400;
-      color: #aaa;
-    }
-    .container {
-      padding: 12px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    .tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 10px;
-      overflow-x: auto;
-    }
-    .tab-button {
-      flex: 1;
-      padding: 8px;
-      border-radius: 999px;
-      border: none;
-      background: #e0e0e5;
-      font-size: 13px;
-      white-space: nowrap;
-    }
-    .tab-button.active {
-      background: #0070c9;
-      color: #fff;
-      font-weight: 600;
-    }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      margin-bottom: 12px;
-    }
-    .card h2 {
-      font-size: 16px;
-      margin: 0 0 8px;
-    }
-    label {
-      display: block;
-      font-size: 13px;
-      margin-top: 6px;
-    }
-    input, button {
-      font-family: inherit;
-      font-size: 14px;
-    }
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      box-sizing: border-box;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-top: 3px;
-    }
-    button.primary {
-      background: #0070c9;
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      padding: 8px 16px;
-      margin-top: 10px;
-    }
-    button.secondary {
-      background: #e0e0e5;
-      border: none;
-      border-radius: 999px;
-      padding: 8px 12px;
-      margin-top: 10px;
-      font-size: 12px;
-    }
-    .small {
-      font-size: 12px;
-      color: #666;
-    }
-
-    /* 横並び用レイアウト */
-    .field-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-    }
-    .field-cell {
-      flex: 1;
-    }
-    .field-cell label {
-      margin-top: 0;
-    }
-
-    /* スキャンボタン行 & スイッチ */
-    .scan-controls-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-    .scan-mode {
-      margin-top: 6px;
-    }
-    .scan-mode label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 0;
-      font-size: 12px;
-      color: #444;
-    }
-
-    /* 直近読み取り表示 */
-    .last-scan-label {
-      display: block;
-      font-size: 12px;
-      margin-top: 10px;
-      color: #555;
-    }
-    .last-scan-box {
-      margin-top: 4px;
-      padding: 6px 8px;
-      min-height: 32px;
-      border-radius: 8px;
-      background: #f0f0f5;
-      border: 1px dashed #bbb;
-      font-size: 13px;
-      color: #333;
-      word-break: break-all;
-      pointer-events: none;
-    }
-
-    /* 棚番をドーンと表示する枠 */
-    .big-location-box {
-      margin-top: 4px;
-      margin-bottom: 8px;
-      padding: 12px 8px;
-      border-radius: 12px;
-      background: #fff7e0;
-      border: 2px solid #f5b800;
-      font-size: 24px;
-      font-weight: 700;
-      text-align: center;
-      letter-spacing: 0.08em;
-      color: #b36b00;
-      min-height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    }
+    /* (スタイルシートは v0.6 から変更なし) */
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f5f5f7; color: #222; }
+    header { background: #1d1d1f; color: #fff; padding: 12px 16px; text-align: center; font-size: 18px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    .header-title { font-size: 18px; font-weight: 600; margin: 0; }
+    .header-version { font-size: 12px; font-weight: 400; color: #aaa; }
+    .container { padding: 12px; max-width: 900px; margin: 0 auto; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto; }
+    .tab-button { flex: 1; padding: 8px; border-radius: 999px; border: none; background: #e0e0e5; font-size: 13px; white-space: nowrap; }
+    .tab-button.active { background: #0070c9; color: #fff; font-weight: 600; }
+    .card { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 12px; }
+    .card h2 { font-size: 16px; margin: 0 0 8px; }
+    label { display: block; font-size: 13px; margin-top: 6px; }
+    input, button { font-family: inherit; font-size: 14px; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc; margin-top: 3px; }
+    button.primary { background: #0070c9; color: #fff; border: none; border-radius: 999px; padding: 8px 16px; margin-top: 10px; }
+    button.secondary { background: #e0e0e5; border: none; border-radius: 999px; padding: 8px 12px; margin-top: 10px; font-size: 12px; }
+    .small { font-size: 12px; color: #666; }
+    .field-row { display: flex; gap: 8px; margin-top: 6px; }
+    .field-cell { flex: 1; }
+    .field-cell label { margin-top: 0; }
+    .scan-controls-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .scan-mode { margin-top: 6px; }
+    .scan-mode label { display: inline-flex; align-items: center; gap: 6px; margin-top: 0; font-size: 12px; color: #444; }
+    .last-scan-label { display: block; font-size: 12px; margin-top: 10px; color: #555; }
+    .last-scan-box { margin-top: 4px; padding: 6px 8px; min-height: 32px; border-radius: 8px; background: #f0f0f5; border: 1px dashed #bbb; font-size: 13px; color: #333; word-break: break-all; pointer-events: none; }
+    .big-location-box { margin-top: 4px; margin-bottom: 8px; padding: 12px 8px; border-radius: 12px; background: #fff7e0; border: 2px solid #f5b800; font-size: 24px; font-weight: 700; text-align: center; letter-spacing: 0.08em; color: #b36b00; min-height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
   </style>
 </head>
 
@@ -226,11 +78,10 @@
         品名: <span id="debug-name"></span>
       </p>
     </div>
-    </div>
+  </div>
 
   <div id="tab-inbound" class="card">
     <h2>入荷 <span class="small">IN</span></h2>
-
     <div class="field-row">
       <div class="field-cell">
         <label>オーダーID</label>
@@ -241,10 +92,8 @@
         <input type="text" id="inbound-model" />
       </div>
     </div>
-
     <label>品名</label>
     <input type="text" id="inbound-name" />
-
     <div class="field-row">
       <div class="field-cell">
         <label>棚番</label>
@@ -255,15 +104,12 @@
         <input type="number" id="inbound-qty" min="1" value="1" />
       </div>
     </div>
-
     <button id="btn-inbound-save" class="primary">入荷を登録</button>
     <div id="inbound-msg" class="small"></div>
   </div>
 
   <div id="tab-use" class="card" style="display:none;">
-
     <div id="big-location" class="big-location-box"></div>
-
     <div class="field-row">
       <div class="field-cell">
         <label>オーダーID</label>
@@ -274,12 +120,9 @@
         <input type="text" id="use-model" readonly />
       </div>
     </div>
-
     <label>品名</label>
     <input type="text" id="use-name" readonly />
-
     <input type="hidden" id="use-loc" />
-
     <div class="field-row">
       <div class="field-cell">
         <label>使用数量</label>
@@ -290,7 +133,6 @@
         <input type="text" id="use-stock" readonly />
       </div>
     </div>
-
     <button id="btn-use-save" class="primary">使用 / 数量調整を登録</button>
     <div id="use-msg" class="small"></div>
   </div>
@@ -303,7 +145,7 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v0.5"; // ★バージョンを v0.5 に更新 (ハイフン対応)
+const APP_VERSION = "v0.7"; // ★バージョンを v0.7 に更新 (ハイフン区切り要素インデックス確定)
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
 // ページロード時にバージョン番号をヘッダーに表示
@@ -316,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 /************************************************************
- * 棚番整形関数
+ * 共通関数群 (中略)
  ************************************************************/
 function normalizeLocation(raw) {
   if (!raw) return "";
@@ -327,70 +169,33 @@ function normalizeLocation(raw) {
   const rest = s.slice(1).split("");
   return [first, ...rest].join("-");
 }
-
-/************************************************************
- * フィードバック（バイブ & 音）
- ************************************************************/
-function vibrate(pattern) {
-  if (navigator.vibrate) {
-    navigator.vibrate(pattern);
-  }
-}
-
+function vibrate(pattern) { if (navigator.vibrate) { navigator.vibrate(pattern); } }
 function playSound(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  try {
-    el.currentTime = 0;
-    el.play().catch(() => {});
-  } catch (e) {}
+  try { el.currentTime = 0; el.play().catch(() => {}); } catch (e) {}
 }
+function notifyScan() { vibrate(50); playSound("audio-scan"); }
+function notifySuccess() { vibrate([40, 60, 40]); playSound("audio-success"); }
 
-function notifyScan() {
-  vibrate(50);
-  playSound("audio-scan");
-}
-
-function notifySuccess() {
-  vibrate([40, 60, 40]);
-  playSound("audio-success");
-}
-
-// GAS通信関数群... (中略) ...
-
+// GAS通信関数群 (中略)
 async function sendInbound(id, name, loc, qty, model) {
-  const body = new URLSearchParams({
-    mode: "inbound",
-    order: id,
-    itemName: name,
-    location: loc,
-    qty: qty,
-    modelName: model || ""
-  });
+  const body = new URLSearchParams({ mode: "inbound", order: id, itemName: name, location: loc, qty: qty, modelName: model || "" });
   const res = await fetch(GAS_URL, { method: "POST", body: body });
   return await res.json();
 }
-
 async function sendOutbound(id, name, loc, qty, model) {
-  const body = new URLSearchParams({
-    mode: "outbound",
-    order: id,
-    itemName: name,
-    location: loc,
-    qty: qty,
-    modelName: model || ""
-  });
+  const body = new URLSearchParams({ mode: "outbound", order: id, itemName: name, location: loc, qty: qty, modelName: model || "" });
   const res = await fetch(GAS_URL, { method: "POST", body: body });
   return await res.json();
 }
-
 async function lookup(order) {
   const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
   const res = await fetch(url);
   return await res.json();
 }
 
-// スキャンモード... (中略) ...
+
 let html5Scanner = null;
 let continuousScan = true;
 const scanModeToggle = document.getElementById("scan-mode-toggle");
@@ -407,15 +212,13 @@ if (scanModeToggle) {
 const btnStartScan = document.getElementById("btn-start-scan");
 if (btnStartScan) {
   btnStartScan.addEventListener("click", async () => {
-    // 既存インスタンスがあれば停止してクリア
     if (html5Scanner) {
       try { await html5Scanner.stop(); } catch (e) {}
       html5Scanner.clear();
       html5Scanner = null;
     }
-
     if (typeof Html5Qrcode === "undefined") {
-      alert("カメラライブラリ（html5-qrcode）が読み込めていません。");
+      alert("カメラライブラリが読み込めていません。");
       return;
     }
 
@@ -427,10 +230,9 @@ if (btnStartScan) {
       async (decoded) => {
         const lastScan = document.getElementById("last-scan");
         if (lastScan) lastScan.textContent = decoded;
-
         notifyScan();
 
-        // **【v0.5 修正版】QRコード解析ロジック**
+        // **【v0.7 修正版】QRコード解析ロジック**
         let order = decoded;
         let name  = "";
         let model = "";
@@ -440,7 +242,7 @@ if (btnStartScan) {
             delimiter = "|";
         } else if (decoded.includes("/")) {
             delimiter = "/";
-        } else if (decoded.includes("-")) { // ★ハイフンを追加
+        } else if (decoded.includes("-")) { 
             delimiter = "-";
         }
         
@@ -449,38 +251,49 @@ if (btnStartScan) {
              sp = decoded.split(delimiter).map(s => s.trim());
         }
         
-        // 分割結果からオーダーIDと品名を抽出
-        if (sp.length >= 5) {
-            // 例: ABCD-00-04-123-部品５ の場合、4つ目と5つ目を使用する前提
-            order = sp[3] || decoded; // 4つ目の要素 (123)
-            name  = sp[4] || "";      // 5つ目の要素 (部品５)
-            model = "";               // 機種名は空欄
-        } else if (sp.length === 3) {
-            // 例: A100|M1|ネジ の場合
+        if (delimiter === '-') {
+            // ★ハイフン区切りの場合 (ABCD-00-04-123-部品５ を想定)
+            if (sp.length >= 6) {
+                // オーダーID: 1～4要素を結合 (ABCD-00-04)
+                order = sp.slice(0, 4).join("-") || decoded; 
+                // 機種名: 5要素目 (インデックス4)
+                model = sp[4] || ""; 
+                // 品名: 6要素目 (インデックス5)
+                name  = sp[5] || ""; 
+
+            } else if (sp.length === 5) {
+                // 5要素の場合 (例: ABCD-00-04-123-部品５) -> 品名が抜けている可能性
+                // オーダーID: 1～4要素を結合 (ABCD-00-04)
+                order = sp.slice(0, 4).join("-") || decoded; 
+                // 機種名: 5要素目 (インデックス4)
+                model = sp[4] || ""; 
+                // 品名: 6要素目が無いため空
+                name  = ""; 
+            } else {
+                // 要素数が少ない場合は、全てをオーダーIDとしてlookupさせる
+                order = decoded;
+            }
+        } else if (sp.length >= 3) {
+            // | または / 区切りの場合 (A100|M1|ネジ を想定)
             order = sp[0] || decoded;
             model = sp[1] || "";
             name  = sp[2] || "";
         } else if (sp.length === 2) {
-            // 例: A100|ネジ の場合
+            // 2要素の場合
             order = sp[0] || decoded;
             name  = sp[1] || "";
             model = "";
         } else {
-            // 該当する区切り文字がないか、要素数が少ない場合
+            // 分割できない場合
             order = decoded;
-            name = "";
-            model = "";
         }
-        
-        // **QRコード解析ロジックここまで**
 
-        // ★★★ デバッグ情報表示 ★★★
+        // デバッグ情報表示
         document.getElementById("debug-order").textContent = order;
         document.getElementById("debug-model").textContent = model;
         document.getElementById("debug-name").textContent = name;
-        // ★★★ ここまで ★★★
 
-        // 入力要素の取得
+        // 入力要素の取得 (中略)
         const inId    = document.getElementById("inbound-id");
         const inName  = document.getElementById("inbound-name");
         const inModel = document.getElementById("inbound-model");
@@ -492,18 +305,14 @@ if (btnStartScan) {
         const useStock = document.getElementById("use-stock");
         const bigLoc = document.getElementById("big-location");
 
-        // 入荷タブ：初期値 (QRコードから取得した情報でまずセット)
+        // 入荷タブ：初期値
         if (inId)    inId.value    = order;
         if (inName)  inName.value  = name;
-        if (inModel) inModel.value = model;
+        if (inModel) inModel.value = model; 
 
         // lookupして詳細取得
         let info = {};
-        try {
-          info = await lookup(order);
-        } catch (e) {
-          info = { error: "lookup failed" };
-        }
+        try { info = await lookup(order); } catch (e) { info = { error: "lookup failed" }; }
 
         if (!info.error) {
           // GAS側から返された情報を優先して使用
@@ -511,10 +320,7 @@ if (btnStartScan) {
           const gasModel  = info.modelName || model; 
           const locNorm   = normalizeLocation(info.location || "");
           const itemName  = info.itemName || name; 
-          const stockQty =
-            info.stockQty !== undefined && info.stockQty !== null
-              ? info.stockQty
-              : "";
+          const stockQty = info.stockQty !== undefined && info.stockQty !== null ? info.stockQty : "";
 
           // 入荷タブ (lookup結果で上書き)
           if (inId)    inId.value    = gasOrder;
@@ -550,11 +356,8 @@ if (btnStartScan) {
   });
 }
 
-// ... (以下、各種イベントリスナーは中略) ...
+// ... (以下、各種イベントリスナーは v0.6から変更なし) ...
 
-/************************************************************
- * QRスキャン停止
- ************************************************************/
 const btnStopScan = document.getElementById("btn-stop-scan");
 if (btnStopScan) {
   btnStopScan.addEventListener("click", async () => {
@@ -566,11 +369,9 @@ if (btnStopScan) {
   });
 }
 
-// 入荷登録ボタンのイベントリスナー（中略）
 const btnInboundSave = document.getElementById("btn-inbound-save");
 if (btnInboundSave) {
   btnInboundSave.addEventListener("click", async () => {
-    // 処理は中略...
     const id = (document.getElementById("inbound-id") || {}).value?.trim() ?? "";
     const name = (document.getElementById("inbound-name") || {}).value?.trim() ?? "";
     const qtyEl = document.getElementById("inbound-qty");
@@ -594,11 +395,9 @@ if (btnInboundSave) {
   });
 }
 
-// 使用/調整ボタンのイベントリスナー（中略）
 const btnUseSave = document.getElementById("btn-use-save");
 if (btnUseSave) {
   btnUseSave.addEventListener("click", async () => {
-    // 処理は中略...
     const id = (document.getElementById("use-id") || {}).value?.trim() ?? "";
     const name = (document.getElementById("use-name") || {}).value?.trim() ?? "";
     const qtyEl = document.getElementById("use-qty");
@@ -624,7 +423,6 @@ if (btnUseSave) {
   });
 }
 
-// 棚番入力の自動整形（中略）
 const inboundLocInput = document.getElementById("inbound-loc");
 if (inboundLocInput) {
   inboundLocInput.addEventListener("blur", () => {
@@ -632,7 +430,6 @@ if (inboundLocInput) {
   });
 }
 
-// タブ切り替え（中略）
 document.querySelectorAll(".tab-button").forEach((btn) => {
   btn.addEventListener("click", () => {
     document

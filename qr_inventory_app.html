@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -22,11 +23,10 @@
       text-align: center;
       font-size: 18px;
       font-weight: 600;
-      /* バージョン表記のためにflexを使って微調整 */
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 8px; /* アプリ名とバージョン番号の間に少し隙間 */
+      gap: 8px;
     }
     .header-title {
       font-size: 18px;
@@ -36,7 +36,7 @@
     .header-version {
       font-size: 12px;
       font-weight: 400;
-      color: #aaa; /* バージョン番号は少し控えめに */
+      color: #aaa;
     }
     .container {
       padding: 12px;
@@ -218,7 +218,16 @@
 
     <span class="last-scan-label">直近の読み取り</span>
     <div id="last-scan" class="last-scan-box"></div>
-  </div>
+    
+    <div class="card" style="margin-top:12px; background:#fff3e0; border: 1px solid #ffcc80; padding: 8px;">
+      <h2 style="font-size: 14px; margin-bottom: 4px;">[デバッグ情報] QR解析結果</h2>
+      <p style="font-size:12px; margin: 4px 0;">
+        オーダーID (GASキー): <strong id="debug-order" style="color: #c90000;"></strong><br>
+        機種名: <span id="debug-model"></span><br>
+        品名: <span id="debug-name"></span>
+      </p>
+    </div>
+    </div>
 
   <div id="tab-inbound" class="card">
     <h2>入荷 <span class="small">IN</span></h2>
@@ -295,7 +304,7 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v0.3"; // ★バージョンを v0.3 に更新
+const APP_VERSION = "v0.4"; // ★バージョンを v0.4 に更新 (デバッグ機能付き)
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
 // ページロード時にバージョン番号をヘッダーに表示
@@ -443,7 +452,7 @@ if (btnStartScan) {
 
         notifyScan();
 
-        // **【v0.3 修正版】QRコード解析ロジック**
+        // **【v0.4 修正版】QRコード解析ロジック**
         let order = decoded;
         let name  = "";
         let model = "";
@@ -462,10 +471,9 @@ if (btnStartScan) {
         }
         
         if (sp.length > 0) {
-            order = sp[0] || decoded; // 最初の要素をオーダーID (空ならdecoded全体)
+            order = sp[0] || decoded;
         }
         if (sp.length > 1) {
-            // 2つ目以降の要素の扱い
             if (sp.length >= 3) {
                 // 3要素以上の場合: [オーダーID, 機種名, 品名, ...]
                 model = sp[1] || "";
@@ -475,7 +483,13 @@ if (btnStartScan) {
                 name = sp[1] || "";
             }
         }
-        // **QRコード解析ロジックここまで**
+        // QRコード解析ロジックここまで
+
+        // ★★★ デバッグ情報表示 ★★★
+        document.getElementById("debug-order").textContent = order;
+        document.getElementById("debug-model").textContent = model;
+        document.getElementById("debug-name").textContent = name;
+        // ★★★ ここまで ★★★
 
         // 入力要素の取得
         const inId    = document.getElementById("inbound-id");
@@ -497,6 +511,7 @@ if (btnStartScan) {
         // lookupして詳細取得
         let info = {};
         try {
+          // lookupはQRから解析したオーダーIDを使用
           info = await lookup(order);
         } catch (e) {
           info = { error: "lookup failed" };

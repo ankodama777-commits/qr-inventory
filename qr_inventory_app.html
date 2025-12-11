@@ -1,131 +1,140 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>在庫管理</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8" />
+  <title>在庫管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f5f5f7; color: #222; }
-    header { background: #1d1d1f; color: #fff; padding: 12px 16px; text-align: center; font-size: 18px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 8px; }
-    .header-title { font-size: 18px; font-weight: 600; margin: 0; }
-    .header-version { font-size: 12px; font-weight: 400; color: #aaa; }
-    .container { padding: 12px; max-width: 900px; margin: 0 auto; }
-    .tabs { display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto; }
-    .tab-button { flex: 1; padding: 8px; border-radius: 999px; border: none; background: #e0e0e5; font-size: 13px; white-space: nowrap; }
-    .tab-button.active { background: #0070c9; color: #fff; font-weight: 600; }
-    .card { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 12px; }
-    .card h2 { font-size: 16px; margin: 0 0 8px; }
-    label { display: block; font-size: 13px; margin-top: 6px; }
-    input, button { font-family: inherit; font-size: 14px; }
-    input[type="text"], input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc; margin-top: 3px; }
-    button.primary { background: #0070c9; color: #fff; border: none; border-radius: 999px; padding: 8px 16px; margin-top: 10px; }
-    button.secondary { background: #e0e0e5; border: none; border-radius: 999px; padding: 8px 12px; margin-top: 10px; font-size: 12px; }
-    .small { font-size: 12px; color: #666; }
-    .field-row { display: flex; gap: 8px; margin-top: 6px; }
-    .field-cell { flex: 1; }
-    .field-cell label { margin-top: 0; }
-    .scan-controls-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .scan-mode { margin-top: 6px; }
-    .scan-mode label { display: inline-flex; align-items: center; gap: 6px; margin-top: 0; font-size: 12px; color: #444; }
-    .last-scan-label { display: block; font-size: 12px; margin-top: 10px; color: #555; }
-    .last-scan-box { margin-top: 4px; padding: 6px 8px; min-height: 32px; border-radius: 8px; background: #f0f0f5; border: 1px dashed #bbb; font-size: 13px; color: #333; word-break: break-all; pointer-events: none; }
-    .big-location-box { margin-top: 4px; margin-bottom: 8px; padding: 12px 8px; border-radius: 12px; background: #fff7e0; border: 2px solid #f5b800; font-size: 24px; font-weight: 700; text-align: center; letter-spacing: 0.08em; color: #b36b00; min-height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  </style>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f5f5f7; color: #222; }
+    header { background: #1d1d1f; color: #fff; padding: 12px 16px; text-align: center; font-size: 18px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    .header-title { font-size: 18px; font-weight: 600; margin: 0; }
+    .header-version { font-size: 12px; font-weight: 400; color: #aaa; }
+    .container { padding: 12px; max-width: 900px; margin: 0 auto; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto; }
+    .tab-button { flex: 1; padding: 8px; border-radius: 999px; border: none; background: #e0e0e5; font-size: 13px; white-space: nowrap; }
+    .tab-button.active { background: #0070c9; color: #fff; font-weight: 600; }
+    .card { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 12px; }
+    .card h2 { font-size: 16px; margin: 0 0 8px; }
+    label { display: block; font-size: 13px; margin-top: 6px; }
+    input, button { font-family: inherit; font-size: 14px; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc; margin-top: 3px; }
+    button.primary { background: #0070c9; color: #fff; border: none; border-radius: 999px; padding: 8px 16px; margin-top: 10px; }
+    button.secondary { background: #e0e0e5; border: none; border-radius: 999px; padding: 8px 12px; margin-top: 10px; font-size: 12px; }
+    .small { font-size: 12px; color: #666; }
+    .field-row { display: flex; gap: 8px; margin-top: 6px; }
+    .field-cell { flex: 1; }
+    .field-cell label { margin-top: 0; }
+    .scan-controls-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .scan-mode { margin-top: 6px; }
+    .scan-mode label { display: inline-flex; align-items: center; gap: 6px; margin-top: 0; font-size: 12px; color: #444; }
+    .last-scan-label { display: block; font-size: 12px; margin-top: 10px; color: #555; }
+    .last-scan-box { margin-top: 4px; padding: 6px 8px; min-height: 32px; border-radius: 8px; background: #f0f0f5; border: 1px dashed #bbb; font-size: 13px; color: #333; word-break: break-all; pointer-events: none; }
+    .big-location-box { margin-top: 4px; margin-bottom: 8px; padding: 12px 8px; border-radius: 12px; background: #fff7e0; border: 2px solid #f5b800; font-size: 24px; font-weight: 700; text-align: center; letter-spacing: 0.08em; color: #b36b00; min-height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  </style>
 </head>
 
 <body>
 <header>
-  <span class="header-title">在庫管理</span>
-  <span id="app-version-display" class="header-version"></span>
+  <span class="header-title">在庫管理</span>
+  <span id="app-version-display" class="header-version"></span>
 </header>
 
 <div class="container">
 
-  <div class="tabs">
-    <button class="tab-button active" data-tab="tab-inbound">入荷登録</button>
-    <button class="tab-button" data-tab="tab-use">使用 / 調整</button>
-  </div>
+  <div class="tabs">
+    <button class="tab-button active" data-tab="tab-inbound">入荷登録</button>
+    <button class="tab-button" data-tab="tab-use">使用 / 調整</button>
+  </div>
 
-  <div class="card" id="qr-scanner-card">
-    <h2>QRスキャン</h2>
+  <div class="card" id="qr-scanner-card">
+    <h2>QRスキャン</h2>
 
-    <div class="scan-controls-row">
-      <button id="btn-start-scan" class="primary">スキャン開始</button>
-      <button id="btn-stop-scan" class="secondary">停止</button>
-    </div>
+    <div class="scan-controls-row">
+      <button id="btn-start-scan" class="primary">スキャン開始</button>
+      <button id="btn-stop-scan" class="secondary">停止</button>
+    </div>
 
-    <div class="scan-mode">
-      <label>
-        <input type="checkbox" id="scan-mode-toggle" checked />
-        連続スキャン（オフで1回読み取りごとに停止）
-      </label>
-    </div>
+    <div class="scan-mode">
+      <label>
+        <input type="checkbox" id="scan-mode-toggle" checked />
+        連続スキャン（オフで1回読み取りごとに停止）
+      </label>
+    </div>
 
-    <div id="qr-reader" style="margin-top:10px;"></div>
+    <div id="qr-reader" style="margin-top:10px;"></div>
 
-    <span class="last-scan-label">直近の読み取り</span>
-    <div id="last-scan" class="last-scan-box"></div>
-  </div>
+    <span class="last-scan-label">直近の読み取り</span>
+    <div id="last-scan" class="last-scan-box"></div>
+    
+    <div class="card" style="margin-top:12px; background:#fff3e0; border: 1px solid #ffcc80; padding: 8px;">
+      <h2 style="font-size: 14px; margin-bottom: 4px;">[デバッグ情報] QR解析結果</h2>
+      <p style="font-size:12px; margin: 4px 0;">
+        オーダーID (キー): <strong id="debug-order" style="color: #c90000;"></strong><br>
+        機種名: <span id="debug-model"></span><br>
+        品名: <span id="debug-name"></span>
+      </p>
+    </div>
+  </div>
 
-  <div id="tab-inbound" class="card">
-    <h2>入荷 <span class="small">IN</span></h2>
-    <div class="field-row">
-      <div class="field-cell">
-        <label>オーダーID</label>
-        <input type="text" id="inbound-id" />
-      </div>
-      <div class="field-cell">
-        <label>機種名（任意）</label>
-        <input type="text" id="inbound-model" />
-      </div>
-    </div>
-    <label>品名</label>
-    <input type="text" id="inbound-name" />
-    <div class="field-row">
-      <div class="field-cell">
-        <label>棚番</label>
-        <input type="text" id="inbound-loc" />
-      </div>
-      <div class="field-cell">
-        <label>数量</label>
-        <input type="number" id="inbound-qty" min="1" value="1" />
-      </div>
-    </div>
-    <button id="btn-inbound-save" class="primary">入荷を登録</button>
-    <div id="inbound-msg" class="small"></div>
-  </div>
+  <div id="tab-inbound" class="card">
+    <h2>入荷 <span class="small">IN</span></h2>
+    <div class="field-row">
+      <div class="field-cell">
+        <label>オーダーID</label>
+        <input type="text" id="inbound-id" />
+      </div>
+      <div class="field-cell">
+        <label>機種名（任意）</label>
+        <input type="text" id="inbound-model" />
+      </div>
+    </div>
+    <label>品名</label>
+    <input type="text" id="inbound-name" />
+    <div class="field-row">
+      <div class="field-cell">
+        <label>棚番</label>
+        <input type="text" id="inbound-loc" />
+      </div>
+      <div class="field-cell">
+        <label>数量</label>
+        <input type="number" id="inbound-qty" min="1" value="1" />
+      </div>
+    </div>
+    <button id="btn-inbound-save" class="primary">入荷を登録</button>
+    <div id="inbound-msg" class="small"></div>
+  </div>
 
-  <div id="tab-use" class="card" style="display:none;">
-    <div id="big-location" class="big-location-box"></div>
-    <div class="field-row">
-      <div class="field-cell">
-        <label>オーダーID</label>
-        <input type="text" id="use-id" />
-      </div>
-      <div class="field-cell">
-        <label>機種名</label>
-        <input type="text" id="use-model" readonly />
-      </div>
-    </div>
-    <label>品名</label>
-    <input type="text" id="use-name" readonly />
-    <input type="hidden" id="use-loc" />
-    <div class="field-row">
-      <div class="field-cell">
-        <label>使用数量</label>
-        <input type="number" id="use-qty" min="1" value="1" />
-      </div>
-      <div class="field-cell">
-        <label>現在庫（GAS側で返却される場合）</label>
-        <input type="text" id="use-stock" readonly />
-      </div>
-    </div>
-    <button id="btn-use-save" class="primary">使用 / 数量調整を登録</button>
-    <div id="use-msg" class="small"></div>
-  </div>
+  <div id="tab-use" class="card" style="display:none;">
+    <div id="big-location" class="big-location-box"></div>
+    <div class="field-row">
+      <div class="field-cell">
+        <label>オーダーID</label>
+        <input type="text" id="use-id" />
+      </div>
+      <div class="field-cell">
+        <label>機種名</label>
+        <input type="text" id="use-model" readonly />
+      </div>
+    </div>
+    <label>品名</label>
+    <input type="text" id="use-name" readonly />
+    <input type="hidden" id="use-loc" />
+    <div class="field-row">
+      <div class="field-cell">
+        <label>使用数量</label>
+        <input type="number" id="use-qty" min="1" value="1" />
+      </div>
+      <div class="field-cell">
+        <label>現在庫（GAS側で返却される場合）</label>
+        <input type="text" id="use-stock" readonly />
+      </div>
+    </div>
+    <button id="btn-use-save" class="primary">使用 / 数量調整を登録</button>
+    <div id="use-msg" class="small"></div>
+  </div>
 </div>
 
 <audio id="audio-scan" src="scan-ok.mp3" preload="auto"></audio>
@@ -133,368 +142,375 @@
 
 <script>
 /************************************************************
- * アプリ設定
- ************************************************************/
-const APP_VERSION = "v1.7"; // 在庫数即時表示の削除
+ * アプリ設定
+ ************************************************************/
+const APP_VERSION = "v1.3"; // ハイフン分割ロジック修正版
 // ★★★ ここを最新のGASデプロイURLに置き換えてください ★★★
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec"; 
 
 // ページロード時にバージョン番号をヘッダーに表示
 document.addEventListener("DOMContentLoaded", () => {
-  const versionEl = document.getElementById("app-version-display");
-  if (versionEl) {
-    versionEl.textContent = APP_VERSION;
-  }
+  const versionEl = document.getElementById("app-version-display");
+  if (versionEl) {
+    versionEl.textContent = APP_VERSION;
+  }
 });
 
 /************************************************************
- * 共通関数群
- ************************************************************/
+ * 共通関数群
+ ************************************************************/
 function normalizeLocation(raw) {
-  if (!raw) return "";
-  let s = raw.trim().toUpperCase();
-  s = s.replace(/[^A-Z0-9]/g, ""); 
-  if (!s) return "";
-  const first = s.charAt(0);
-  const rest = s.slice(1).split("");
-  return [first, ...rest].join("-");
+  if (!raw) return "";
+  let s = raw.trim().toUpperCase();
+  s = s.replace(/[^A-Z0-9]/g, ""); 
+  if (!s) return "";
+  const first = s.charAt(0);
+  const rest = s.slice(1).split("");
+  return [first, ...rest].join("-");
 }
 
 function vibrate(pattern) {
-  if (navigator.vibrate) {
-    navigator.vibrate(pattern);
-  }
+  if (navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
 }
 
 function playSound(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  try {
-    el.currentTime = 0;
-    el.play().catch(() => {});
-  } catch (e) {}
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  } catch (e) {}
 }
 
 function notifyScan() {
-  vibrate(50);
-  playSound("audio-scan");
+  vibrate(50);
+  playSound("audio-scan");
 }
 
 function notifySuccess() {
-  vibrate([40, 60, 40]);
-  playSound("audio-success");
+  vibrate([40, 60, 40]);
+  playSound("audio-success");
 }
 
 /************************************************************
- * GAS通信関数群
- ************************************************************/
+ * GAS通信関数群
+ ************************************************************/
 async function sendInbound(id, name, loc, qty, model) {
-  const body = new URLSearchParams({
-    mode: "inbound",
-    order: id,
-    itemName: name,
-    location: loc,
-    qty: qty,
-    modelName: model || ""
-  });
-  const res = await fetch(GAS_URL, { method: "POST", body: body });
-  return await res.json();
+  const body = new URLSearchParams({
+    mode: "inbound",
+    order: id,
+    itemName: name,
+    location: loc,
+    qty: qty,
+    modelName: model || ""
+  });
+  const res = await fetch(GAS_URL, { method: "POST", body: body });
+  return await res.json();
 }
 
 async function sendOutbound(id, name, loc, qty, model) {
-  const body = new URLSearchParams({
-    mode: "outbound",
-    order: id,
-    itemName: name,
-    location: loc,
-    qty: qty,
-    modelName: model || ""
-  });
-  const res = await fetch(GAS_URL, { method: "POST", body: body });
-  return await res.json();
+  const body = new URLSearchParams({
+    mode: "outbound",
+    order: id,
+    itemName: name,
+    location: loc,
+    qty: qty,
+    modelName: model || ""
+  });
+  const res = await fetch(GAS_URL, { method: "POST", body: body });
+  return await res.json();
 }
 
 async function lookup(order) {
-  const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
-  const res = await fetch(url);
-  return await res.json();
+  const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
+  const res = await fetch(url);
+  return await res.json();
 }
 
 /************************************************************
- * スキャンモードトグル
- ************************************************************/
+ * スキャンモードトグル
+ ************************************************************/
 let html5Scanner = null;
 let continuousScan = true;
 const scanModeToggle = document.getElementById("scan-mode-toggle");
 if (scanModeToggle) {
-  continuousScan = scanModeToggle.checked;
-  scanModeToggle.addEventListener("change", (e) => {
-    continuousScan = e.target.checked;
-  });
+  continuousScan = scanModeToggle.checked;
+  scanModeToggle.addEventListener("change", (e) => {
+    continuousScan = e.target.checked;
+  });
 }
 
 /************************************************************
- * QRスキャン開始
- ************************************************************/
+ * QRスキャン開始
+ ************************************************************/
 const btnStartScan = document.getElementById("btn-start-scan");
 if (btnStartScan) {
-  btnStartScan.addEventListener("click", async () => {
-    if (html5Scanner) {
-      try { await html5Scanner.stop(); } catch (e) {}
-      html5Scanner.clear();
-      html5Scanner = null;
-    }
-    if (typeof Html5Qrcode === "undefined") {
-      alert("カメラライブラリが読み込めていません。");
-      return;
-    }
+  btnStartScan.addEventListener("click", async () => {
+    if (html5Scanner) {
+      try { await html5Scanner.stop(); } catch (e) {}
+      html5Scanner.clear();
+      html5Scanner = null;
+    }
+    if (typeof Html5Qrcode === "undefined") {
+      alert("カメラライブラリが読み込めていません。");
+      return;
+    }
 
-    html5Scanner = new Html5Qrcode("qr-reader");
+    html5Scanner = new Html5Qrcode("qr-reader");
 
-    html5Scanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 200 },
-      async (decoded) => {
-        const lastScan = document.getElementById("last-scan");
-        if (lastScan) lastScan.textContent = decoded;
-        notifyScan();
+    html5Scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 200 },
+      async (decoded) => {
+        const lastScan = document.getElementById("last-scan");
+        if (lastScan) lastScan.textContent = decoded;
+        notifyScan();
 
-        /********************************************************
-         * QRコード解析ロジック (v1.7: 4要素区切りを採用)
-         ********************************************************/
-        let order = decoded;
-        let name  = "";
-        let model = "";
-        
-        let delimiter = "";
-        if (decoded.includes("|")) {
-          delimiter = "|";
-        } else if (decoded.includes("/")) {
-          delimiter = "/";
-        } else if (decoded.includes("-")) {
-          delimiter = "-";
-        }
-        
-        let sp = [];
-        if (delimiter) {
-          sp = decoded.split(delimiter).map(s => s.trim());
-        }
-        
-        if (delimiter === "-") {
-          // 例: "ABCD-00-01-123-部品５" -> オーダーIDを4要素と見なす
-          if (sp.length >= 4) {
-            order = sp.slice(0, 4).join("-"); // ABCD-00-01
-            model = sp[4] || ""; // 123
-            name  = sp[5] || ""; // 部品５
-          } else {
-            order = decoded;
-          }
-        } else if (delimiter === "|" || delimiter === "/") {
-          // 例: "ABCD-00-01|部品５|123"
-          if (sp.length >= 3) {
-            order = sp[0] || decoded;
-            name  = sp[1] || "";
-            model = sp[2] || "";
-          } else if (sp.length === 2) {
-            order = sp[0] || decoded;
-            name  = sp[1] || "";
-            model = "";
-          } else {
-            order = decoded;
-          }
-        } else {
-          order = decoded;
-        }
+        /********************************************************
+         * QRコード解析ロジック
+         ********************************************************/
+        let order = decoded;
+        let name  = "";
+        let model = "";
+        
+        let delimiter = "";
+        if (decoded.includes("|")) {
+          delimiter = "|";
+        } else if (decoded.includes("/")) {
+          delimiter = "/";
+        } else if (decoded.includes("-")) {
+          delimiter = "-";
+        }
+        
+        let sp = [];
+        if (delimiter) {
+          sp = decoded.split(delimiter).map(s => s.trim());
+        }
+        
+        if (delimiter === "-") {
+          // 例: "ABCD-00-01-機種名-品名"
+          if (sp.length >= 3) {
+            // オーダーIDは最初の3要素のみ
+            order = sp.slice(0, 3).join("-");
+            // 4つ目以降を機種名・品名として扱う
+            model = sp[3] || "";
+            name  = sp[4] || "";
+          } else {
+            order = decoded;
+          }
+        } else if (delimiter === "|" || delimiter === "/") {
+          // 例: "ABCD-00-01|品名|機種名" など
+          if (sp.length >= 3) {
+            order = sp[0] || decoded;
+            name  = sp[1] || "";
+            model = sp[2] || "";
+          } else if (sp.length === 2) {
+            order = sp[0] || decoded;
+            name  = sp[1] || "";
+            model = "";
+          } else {
+            order = decoded;
+          }
+        } else {
+          order = decoded;
+        }
 
-        // 入力要素の取得
-        const inId    = document.getElementById("inbound-id");
-        const inName  = document.getElementById("inbound-name");
-        const inModel = document.getElementById("inbound-model");
-        const inLoc   = document.getElementById("inbound-loc");
-        const useId    = document.getElementById("use-id");
-        const useName  = document.getElementById("use-name");
-        const useLoc   = document.getElementById("use-loc");
-        const useModel = document.getElementById("use-model");
-        const useStock = document.getElementById("use-stock");
-        const bigLoc   = document.getElementById("big-location");
+        // デバッグ情報表示
+        document.getElementById("debug-order").textContent = order;
+        document.getElementById("debug-model").textContent = model;
+        document.getElementById("debug-name").textContent = name;
 
-        // 入荷タブ：QRから分離した値をひとまずセット
-        if (inId)    inId.value    = order;
-        if (inName)  inName.value  = name;
-        if (inModel) inModel.value = model;
+        // 入力要素の取得
+        const inId    = document.getElementById("inbound-id");
+        const inName  = document.getElementById("inbound-name");
+        const inModel = document.getElementById("inbound-model");
+        const inLoc   = document.getElementById("inbound-loc");
+        const useId    = document.getElementById("use-id");
+        const useName  = document.getElementById("use-name");
+        const useLoc   = document.getElementById("use-loc");
+        const useModel = document.getElementById("use-model");
+        const useStock = document.getElementById("use-stock");
+        const bigLoc   = document.getElementById("big-location");
 
-        // lookupして詳細取得
-        let info = {};
-        try { 
-          info = await lookup(order); 
-        } catch (e) { 
-          info = { error: "lookup failed" }; 
-        }
+        // 入荷タブ：QRから分離した値をひとまずセット
+        if (inId)    inId.value    = order;
+        if (inName)  inName.value  = name;
+        if (inModel) inModel.value = model;
 
-        if (!info.error) {
-          // GAS側から返された情報
-          const gasModel = info.modelName || model;
-          const locNorm  = normalizeLocation(info.location || "");
-          const itemName = info.itemName || name;
-          const stockQty = (info.stockQty !== undefined && info.stockQty !== null) ? info.stockQty : "";
+        // lookupして詳細取得
+        let info = {};
+        try { 
+          info = await lookup(order); 
+        } catch (e) { 
+          info = { error: "lookup failed" }; 
+        }
 
-          // 入荷タブ (オーダーはQR解析結果を採用 - 強制)
-          if (inId)    inId.value    = order;
-          if (inName)  inName.value  = itemName;
-          if (inLoc)   inLoc.value   = locNorm;
-          if (inModel) inModel.value = gasModel;
+        if (!info.error) {
+          // GAS側から返された情報
+          const gasModel = info.modelName || model;
+          const locNorm  = normalizeLocation(info.location || "");
+          const itemName = info.itemName || name;
+          const stockQty = (info.stockQty !== undefined && info.stockQty !== null) ? info.stockQty : "";
 
-          // 使用 / 調整タブ (オーダーはQR解析結果を採用 - 強制)
-          if (useId)    useId.value    = order;
-          if (useName)  useName.value  = itemName;
-          if (useLoc)   useLoc.value   = locNorm;
-          if (useModel) useModel.value = gasModel;
-          if (useStock) useStock.value = stockQty;
-          if (bigLoc)   bigLoc.textContent = locNorm;
-        } else {
-          // lookup失敗時はQR情報のみセット
-          if (useId)    useId.value    = order;
-          if (useName)  useName.value  = name;
-          if (useModel) useModel.value = model;
-          if (useStock) useStock.value = "";
-          if (bigLoc)   bigLoc.textContent = "";
-          if (useLoc)   useLoc.value   = "";
-        }
+          // 入荷タブ (オーダーはQR解析結果を採用)
+          if (inId)    inId.value    = order;
+          if (inName)  inName.value  = itemName;
+          if (inLoc)   inLoc.value   = locNorm;
+          if (inModel) inModel.value = gasModel;
 
-        if (!continuousScan && html5Scanner) {
-          try { await html5Scanner.stop(); } catch (e) {}
-          html5Scanner.clear();
-          html5Scanner = null;
-        }
-      },
-      (errorMessage) => {
-        // スキャンエラー時は特に何もしない
-      }
-    );
-  });
+          // 使用 / 調整タブ
+          if (useId)    useId.value    = order;
+          if (useName)  useName.value  = itemName;
+          if (useLoc)   useLoc.value   = locNorm;
+          if (useModel) useModel.value = gasModel;
+          if (useStock) useStock.value = stockQty;
+          if (bigLoc)   bigLoc.textContent = locNorm;
+        } else {
+          // lookup失敗時はQR情報のみセット
+          if (useId)    useId.value    = order;
+          if (useName)  useName.value  = name;
+          if (useModel) useModel.value = model;
+          if (useStock) useStock.value = "";
+          if (bigLoc)   bigLoc.textContent = "";
+          if (useLoc)   useLoc.value   = "";
+        }
+
+        if (!continuousScan && html5Scanner) {
+          try { await html5Scanner.stop(); } catch (e) {}
+          html5Scanner.clear();
+          html5Scanner = null;
+        }
+      },
+      (errorMessage) => {
+        // スキャンエラー時は特に何もしない（ログが必要ならここに追加）
+      }
+    );
+  });
 }
 
 /************************************************************
- * スキャン停止
- ************************************************************/
+ * スキャン停止
+ ************************************************************/
 const btnStopScan = document.getElementById("btn-stop-scan");
 if (btnStopScan) {
-  btnStopScan.addEventListener("click", async () => {
-    if (html5Scanner) {
-      try { await html5Scanner.stop(); } catch (e) {}
-      html5Scanner.clear();
-      html5Scanner = null;
-    }
-  });
+  btnStopScan.addEventListener("click", async () => {
+    if (html5Scanner) {
+      try { await html5Scanner.stop(); } catch (e) {}
+      html5Scanner.clear();
+      html5Scanner = null;
+    }
+  });
 }
 
 /************************************************************
- * 入荷登録ボタン
- ************************************************************/
+ * 入荷登録ボタン
+ ************************************************************/
 const btnInboundSave = document.getElementById("btn-inbound-save");
 if (btnInboundSave) {
-  btnInboundSave.addEventListener("click", async () => {
-    const id = (document.getElementById("inbound-id") || {}).value?.trim() ?? "";
-    const name = (document.getElementById("inbound-name") || {}).value?.trim() ?? "";
-    const qtyEl = document.getElementById("inbound-qty");
-    const model = (document.getElementById("inbound-model") || {}).value?.trim() ?? "";
-    const qty = qtyEl ? Number(qtyEl.value) : 0;
-    const locInput = document.getElementById("inbound-loc");
-    let locRaw = locInput ? locInput.value.trim() : "";
-    const loc = normalizeLocation(locRaw);
-    if (locInput) locInput.value = loc;
-    const msg = document.getElementById("inbound-msg");
+  btnInboundSave.addEventListener("click", async () => {
+    const id = (document.getElementById("inbound-id") || {}).value?.trim() ?? "";
+    const name = (document.getElementById("inbound-name") || {}).value?.trim() ?? "";
+    const qtyEl = document.getElementById("inbound-qty");
+    const model = (document.getElementById("inbound-model") || {}).value?.trim() ?? "";
+    const qty = qtyEl ? Number(qtyEl.value) : 0;
+    const locInput = document.getElementById("inbound-loc");
+    let locRaw = locInput ? locInput.value.trim() : "";
+    const loc = normalizeLocation(locRaw);
+    if (locInput) locInput.value = loc;
+    const msg = document.getElementById("inbound-msg");
 
-    if (!id || !qty) {
-      if (msg) msg.textContent = "IDと数量は必須です。";
-      return;
-    }
+    if (!id || !qty) {
+      if (msg) msg.textContent = "IDと数量は必須です。";
+      return;
+    }
 
-    let res = {};
-    try { 
-      res = await sendInbound(id, name, loc, qty, model); 
-    } catch (e) { 
-      res = { ok: false }; 
-    }
+    let res = {};
+    try { 
+      res = await sendInbound(id, name, loc, qty, model); 
+    } catch (e) { 
+      res = { ok: false }; 
+    }
 
-    if (msg) {
-      if (res.ok) { 
-        msg.textContent = "入荷登録：GAS OK"; 
-        notifySuccess(); 
-      } else { 
-        msg.textContent = "入荷登録：GAS ERROR"; 
-      }
-    }
-  });
+    if (msg) {
+      if (res.ok) { 
+        msg.textContent = "入荷登録：GAS OK"; 
+        notifySuccess(); 
+      } else { 
+        msg.textContent = "入荷登録：GAS ERROR"; 
+      }
+    }
+  });
 }
 
 /************************************************************
- * 使用 / 調整登録ボタン
- ************************************************************/
+ * 使用 / 調整登録ボタン
+ ************************************************************/
 const btnUseSave = document.getElementById("btn-use-save");
 if (btnUseSave) {
-  btnUseSave.addEventListener("click", async () => {
-    const id = (document.getElementById("use-id") || {}).value?.trim() ?? "";
-    const name = (document.getElementById("use-name") || {}).value?.trim() ?? "";
-    const qtyEl = document.getElementById("use-qty");
-    const model = (document.getElementById("use-model") || {}).value?.trim() ?? "";
-    const qty = qtyEl ? Number(qtyEl.value) : 0;
-    const locInput = document.getElementById("use-loc");
-    let locRaw = locInput ? locInput.value.trim() : "";
-    const loc = normalizeLocation(locRaw);
-    if (locInput) locInput.value = loc;
-    const bigLoc = document.getElementById("big-location");
-    if (bigLoc) bigLoc.textContent = loc;
-    const msg = document.getElementById("use-msg");
+  btnUseSave.addEventListener("click", async () => {
+    const id = (document.getElementById("use-id") || {}).value?.trim() ?? "";
+    const name = (document.getElementById("use-name") || {}).value?.trim() ?? "";
+    const qtyEl = document.getElementById("use-qty");
+    const model = (document.getElementById("use-model") || {}).value?.trim() ?? "";
+    const qty = qtyEl ? Number(qtyEl.value) : 0;
+    const locInput = document.getElementById("use-loc");
+    let locRaw = locInput ? locInput.value.trim() : "";
+    const loc = normalizeLocation(locRaw);
+    if (locInput) locInput.value = loc;
+    const bigLoc = document.getElementById("big-location");
+    if (bigLoc) bigLoc.textContent = loc;
+    const msg = document.getElementById("use-msg");
 
-    if (!id || !qty) {
-      if (msg) msg.textContent = "IDと使用数量は必須です。";
-      return;
-    }
+    if (!id || !qty) {
+      if (msg) msg.textContent = "IDと使用数量は必須です。";
+      return;
+    }
 
-    let res = {};
-    try { 
-      res = await sendOutbound(id, name, loc, qty, model); 
-    } catch (e) { 
-      res = { ok: false }; 
-    }
+    let res = {};
+    try { 
+      res = await sendOutbound(id, name, loc, qty, model); 
+    } catch (e) { 
+      res = { ok: false }; 
+    }
 
-    if (msg) {
-      if (res.ok) { 
-        msg.textContent = "使用 / 数量調整：GAS OK"; 
-        notifySuccess(); 
-      } else { 
-        msg.textContent = "使用 / 数量調整：GAS ERROR"; 
-      }
-    }
-  });
+    if (msg) {
+      if (res.ok) { 
+        msg.textContent = "使用 / 数量調整：GAS OK"; 
+        notifySuccess(); 
+      } else { 
+        msg.textContent = "使用 / 数量調整：GAS ERROR"; 
+      }
+    }
+  });
 }
 
 /************************************************************
- * 棚番フォーマット（入荷側 blur 時）
- ************************************************************/
+ * 棚番フォーマット（入荷側 blur 時）
+ ************************************************************/
 const inboundLocInput = document.getElementById("inbound-loc");
 if (inboundLocInput) {
-  inboundLocInput.addEventListener("blur", () => {
-    inboundLocInput.value = normalizeLocation(inboundLocInput.value);
-  });
+  inboundLocInput.addEventListener("blur", () => {
+    inboundLocInput.value = normalizeLocation(inboundLocInput.value);
+  });
 }
 
 /************************************************************
- * タブ切り替え
- ************************************************************/
+ * タブ切り替え
+ ************************************************************/
 document.querySelectorAll(".tab-button").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document
-      .querySelectorAll(".tab-button")
-      .forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    const tab = btn.dataset.tab;
-    document.querySelectorAll(".card").forEach((c) => {
-      if (c.id === "qr-scanner-card") return; 
-      c.style.display = (c.id === tab) ? "block" : "none";
-    });
-  });
+  btn.addEventListener("click", () => {
+    document
+      .querySelectorAll(".tab-button")
+      .forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".card").forEach((c) => {
+      if (c.id === "qr-scanner-card") return; 
+      c.style.display = (c.id === tab) ? "block" : "none";
+    });
+  });
 });
 </script>
 </body>

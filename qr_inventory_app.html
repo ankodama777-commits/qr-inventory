@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>在庫管理ミニアプリ</title>
+  <title>在庫管理</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -188,7 +188,7 @@
 
 <body>
 <header>
-  <span class="header-title">在庫管理ミニアプリ</span>
+  <span class="header-title">在庫管理</span>
   <span id="app-version-display" class="header-version"></span>
 </header>
 
@@ -295,7 +295,7 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v0.2"; // ★バージョンを v0.2 に更新
+const APP_VERSION = "v0.3"; // ★バージョンを v0.3 に更新
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
 // ページロード時にバージョン番号をヘッダーに表示
@@ -309,12 +309,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /************************************************************
  * 棚番整形関数
- * 例: "a111" → "A-1-1-1"
  ************************************************************/
 function normalizeLocation(raw) {
   if (!raw) return "";
   let s = raw.trim().toUpperCase();
-  s = s.replace(/[^A-Z0-9]/g, ""); // 英数字以外を除去
+  s = s.replace(/[^A-Z0-9]/g, ""); 
   if (!s) return "";
   const first = s.charAt(0);
   const rest = s.slice(1).split("");
@@ -444,19 +443,29 @@ if (btnStartScan) {
 
         notifyScan();
 
-        // **【v0.2 修正版】QRコード解析ロジック**
+        // **【v0.3 修正版】QRコード解析ロジック**
         let order = decoded;
         let name  = "";
         let model = "";
         
-        // パイプ記号で分割
-        const sp = decoded.split("|").map(s => s.trim());
+        // 優先順位：1. | (パイプ) -> 2. / (スラッシュ)
+        let delimiter = '';
+        if (decoded.includes("|")) {
+            delimiter = "|";
+        } else if (decoded.includes("/")) {
+            delimiter = "/";
+        }
+        
+        let sp = [];
+        if (delimiter) {
+             sp = decoded.split(delimiter).map(s => s.trim());
+        }
         
         if (sp.length > 0) {
-            order = sp[0] || decoded; // 最初の要素をオーダーID (空なら全体)
+            order = sp[0] || decoded; // 最初の要素をオーダーID (空ならdecoded全体)
         }
         if (sp.length > 1) {
-            // 2つ目以降の要素の扱いを強化
+            // 2つ目以降の要素の扱い
             if (sp.length >= 3) {
                 // 3要素以上の場合: [オーダーID, 機種名, 品名, ...]
                 model = sp[1] || "";

@@ -32,7 +32,31 @@
     .scan-mode label { display: inline-flex; align-items: center; gap: 6px; margin-top: 0; font-size: 12px; color: #444; }
     .last-scan-label { display: block; font-size: 12px; margin-top: 10px; color: #555; }
     .last-scan-box { margin-top: 4px; padding: 6px 8px; min-height: 32px; border-radius: 8px; background: #f0f0f5; border: 1px dashed #bbb; font-size: 13px; color: #333; word-break: break-all; pointer-events: none; }
-    .big-location-box { margin-top: 4px; margin-bottom: 8px; padding: 12px 8px; border-radius: 12px; background: #fff7e0; border: 2px solid #f5b800; font-size: 24px; font-weight: 700; text-align: center; letter-spacing: 0.08em; color: #b36b00; min-height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+    .big-location-box {
+      margin-top: 4px;
+      margin-bottom: 8px;
+      padding: 12px 8px;
+      border-radius: 12px;
+      background: #fff7e0;
+      border: 2px solid #f5b800;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.08em;
+      color: #b36b00;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    /* 棚番未登録時のスタイル */
+    .big-location-box.no-location {
+      background: #ffe6e6;
+      border-color: #b00020;
+      color: #b00020;
+    }
 
     .error-text { color: #b00020; font-weight: 600; }
     .error-input { border-color: #b00020 !important; background: #ffe6e6; }
@@ -94,7 +118,7 @@
       </div>
       <div class="field-cell">
         <label>数量</label>
-        <!-- 初期値は 0 にして、D列（plannedQty）を反映させる -->
+        <!-- 初期値は 0 / D列（plannedQty）を反映 -->
         <input type="number" id="inbound-qty" min="0" value="0" />
       </div>
     </div>
@@ -139,13 +163,14 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v1.6"; // D列 plannedQty を入荷数量に反映
-// ★★★ ここを最新のGASデプロイURLに置き換えてください ★★★
+const APP_VERSION = "v1.7"; // D列反映 + 棚番未登録表示
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
 document.addEventListener("DOMContentLoaded", () => {
   const versionEl = document.getElementById("app-version-display");
   if (versionEl) versionEl.textContent = APP_VERSION;
+  // 初期表示は「棚番 未登録」
+  setBigLocation("");
 });
 
 /************************************************************
@@ -159,6 +184,20 @@ function normalizeLocation(raw) {
   const first = s.charAt(0);
   const rest = s.slice(1).split("");
   return [first, ...rest].join("-");
+}
+
+// 棚番の大きな表示を統一的に制御
+function setBigLocation(loc) {
+  const bigLoc = document.getElementById("big-location");
+  if (!bigLoc) return;
+
+  if (loc) {
+    bigLoc.textContent = loc;
+    bigLoc.classList.remove("no-location");
+  } else {
+    bigLoc.textContent = "棚番 未登録";
+    bigLoc.classList.add("no-location");
+  }
 }
 
 function vibrate(pattern) {
@@ -316,7 +355,6 @@ if (btnStartScan) {
         const useLoc   = document.getElementById("use-loc");
         const useModel = document.getElementById("use-model");
         const useStock = document.getElementById("use-stock");
-        const bigLoc   = document.getElementById("big-location");
 
         // 入荷タブ初期値
         if (inId)    inId.value    = order;
@@ -324,6 +362,13 @@ if (btnStartScan) {
         if (inModel) inModel.value = model;
         if (inLoc)   inLoc.value   = "";
         if (inQtyEl) inQtyEl.value = 0;
+        // 使用タブも初期化
+        if (useId)    useId.value    = order;
+        if (useName)  useName.value  = name;
+        if (useModel) useModel.value = model;
+        if (useLoc)   useLoc.value   = "";
+        if (useStock) useStock.value = "";
+        setBigLocation(""); // いったん未登録表示
 
         // lookup 実行
         let info = {};
@@ -345,7 +390,6 @@ if (btnStartScan) {
           if (inName)  inName.value  = itemName;
           if (inLoc)   inLoc.value   = locNorm;
           if (inModel) inModel.value = gasModel;
-
           if (inQtyEl) {
             if (plannedQty !== "" && !isNaN(plannedQty)) {
               inQtyEl.value = plannedQty;  // D列の値を反映
@@ -354,22 +398,21 @@ if (btnStartScan) {
             }
           }
 
-          // 使用 / 調整タブ（おまけ表示）
+          // 使用 / 調整タブ
           if (useId)    useId.value    = order;
           if (useName)  useName.value  = itemName;
           if (useLoc)   useLoc.value   = locNorm;
           if (useModel) useModel.value = gasModel;
-          if (useStock) useStock.value = lastInQty; // G列の入荷数を現在庫的に表示
-          if (bigLoc)   bigLoc.textContent = locNorm;
+          if (useStock) useStock.value = lastInQty; // G列入荷数を表示
+          setBigLocation(locNorm); // 棚番あり/なしで表示切替
         } else {
           // lookup失敗時
           if (useId)    useId.value    = order;
           if (useName)  useName.value  = name;
           if (useModel) useModel.value = model;
-          if (useStock) useStock.value = "";
-          if (bigLoc)   bigLoc.textContent = "";
           if (useLoc)   useLoc.value   = "";
-          if (inQtyEl)  inQtyEl.value  = 0;
+          if (useStock) useStock.value = "";
+          setBigLocation("");
         }
 
         if (!continuousScan && html5Scanner) {
@@ -430,7 +473,6 @@ if (btnInboundSave) {
       return;
     }
 
-    // 数量 0 or 未入力 → エラー
     if (!Number.isFinite(qty) || qty <= 0) {
       if (msg) {
         msg.textContent = "数量が未入力のため登録できません。D列が空のオーダーは、この画面で正しい数量を入力してください。";
@@ -476,8 +518,7 @@ if (btnUseSave) {
     let locRaw = locInput ? locInput.value.trim() : "";
     const loc  = normalizeLocation(locRaw);
     if (locInput) locInput.value = loc;
-    const bigLoc = document.getElementById("big-location");
-    if (bigLoc) bigLoc.textContent = loc;
+    setBigLocation(loc);  // 登録後も棚番表示更新
     const msg  = document.getElementById("use-msg");
 
     if (!id || !qty) {

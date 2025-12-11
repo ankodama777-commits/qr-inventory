@@ -9,51 +9,40 @@
 
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f5f5f7; color: #222; }
-    header { background: #1d1d1f; color: #fff; padding: 12px 16px; text-align: center; font-size: 18px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    header { background: #1d1d1f; color: #fff; padding: 12px 16px; text-align: center; font-size: 18px; font-weight: 600;
+             display: flex; justify-content: center; align-items: center; gap: 8px; }
     .header-title { font-size: 18px; font-weight: 600; margin: 0; }
     .header-version { font-size: 12px; font-weight: 400; color: #aaa; }
     .container { padding: 12px; max-width: 900px; margin: 0 auto; }
     .tabs { display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto; }
-    .tab-button { flex: 1; padding: 8px; border-radius: 999px; border: none; background: #e0e0e5; font-size: 13px; white-space: nowrap; }
+    .tab-button { flex: 1; padding: 8px; border-radius: 999px; border: none; background: #e0e0e5;
+                  font-size: 13px; white-space: nowrap; }
     .tab-button.active { background: #0070c9; color: #fff; font-weight: 600; }
     .card { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 12px; }
     .card h2 { font-size: 16px; margin: 0 0 8px; }
     label { display: block; font-size: 13px; margin-top: 6px; }
     input, button { font-family: inherit; font-size: 14px; }
-    input[type="text"], input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc; margin-top: 3px; }
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 8px; box-sizing: border-box;
+      border-radius: 8px; border: 1px solid #ccc; margin-top: 3px;
+    }
     button.primary { background: #0070c9; color: #fff; border: none; border-radius: 999px; padding: 8px 16px; margin-top: 10px; }
     button.secondary { background: #e0e0e5; border: none; border-radius: 999px; padding: 8px 12px; margin-top: 10px; font-size: 12px; }
     .small { font-size: 12px; color: #666; }
     .field-row { display: flex; gap: 8px; margin-top: 6px; }
     .field-cell { flex: 1; }
     .field-cell label { margin-top: 0; }
-    .scan-controls-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .scan-mode { margin-top: 6px; }
-    .scan-mode label { display: inline-flex; align-items: center; gap: 6px; margin-top: 0; font-size: 12px; color: #444; }
-    .last-scan-label { display: block; font-size: 12px; margin-top: 10px; color: #555; }
-    .last-scan-box { margin-top: 4px; padding: 6px 8px; min-height: 32px; border-radius: 8px; background: #f0f0f5; border: 1px dashed #bbb; font-size: 13px; color: #333; word-break: break-all; pointer-events: none; }
 
+    /* 未登録表示用ボックス */
     .big-location-box {
-      margin-top: 4px;
-      margin-bottom: 8px;
-      padding: 12px 8px;
-      border-radius: 12px;
-      background: #fff7e0;
-      border: 2px solid #f5b800;
-      font-size: 24px;
-      font-weight: 700;
-      text-align: center;
-      letter-spacing: 0.08em;
-      color: #b36b00;
+      margin-top: 4px; margin-bottom: 8px;
+      padding: 12px 8px; border-radius: 12px;
+      font-size: 24px; font-weight: 700;
+      text-align: center; letter-spacing: 0.08em;
       min-height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
-
-    .error-text { color: #b00020; font-weight: 600; }
-    .error-input { border-color: #b00020 !important; background: #ffe6e6; }
   </style>
 </head>
 
@@ -73,7 +62,7 @@
   <div class="card" id="qr-scanner-card">
     <h2>QRスキャン</h2>
 
-    <div class="scan-controls-row">
+    <div class="scan-controls-row" style="display:flex; gap:8px;">
       <button id="btn-start-scan" class="primary">スキャン開始</button>
       <button id="btn-stop-scan" class="secondary">停止</button>
     </div>
@@ -81,18 +70,22 @@
     <div class="scan-mode">
       <label>
         <input type="checkbox" id="scan-mode-toggle" checked />
-        連続スキャン（オフで1回読み取りごとに停止）
+        連続スキャン（オフで1回ごとに停止）
       </label>
     </div>
 
     <div id="qr-reader" style="margin-top:10px;"></div>
 
     <span class="last-scan-label">直近の読み取り</span>
-    <div id="last-scan" class="last-scan-box"></div>
+    <div id="last-scan" class="last-scan-box"
+         style="margin-top:4px; padding:6px 8px; min-height:32px; border-radius:8px;
+                background:#f0f0f5; border:1px dashed #bbb; font-size:13px;"></div>
   </div>
 
+  <!-- 入荷 -->
   <div id="tab-inbound" class="card">
     <h2>入荷 <span class="small">IN</span></h2>
+
     <div class="field-row">
       <div class="field-cell">
         <label>オーダーID</label>
@@ -103,25 +96,29 @@
         <input type="text" id="inbound-model" />
       </div>
     </div>
+
     <label>品名</label>
     <input type="text" id="inbound-name" />
+
     <div class="field-row">
       <div class="field-cell">
         <label>棚番</label>
         <input type="text" id="inbound-loc" />
       </div>
       <div class="field-cell">
-        <label>数量</label>
-        <!-- 初期値 0、D列（plannedQty）を反映 -->
+        <label>数量（D列の予定数）</label>
         <input type="number" id="inbound-qty" min="0" value="0" />
       </div>
     </div>
+
     <button id="btn-inbound-save" class="primary">入荷を登録</button>
     <div id="inbound-msg" class="small"></div>
   </div>
 
+  <!-- 使用 / 調整 -->
   <div id="tab-use" class="card" style="display:none;">
     <div id="big-location" class="big-location-box"></div>
+
     <div class="field-row">
       <div class="field-cell">
         <label>オーダーID</label>
@@ -132,22 +129,27 @@
         <input type="text" id="use-model" readonly />
       </div>
     </div>
+
     <label>品名</label>
     <input type="text" id="use-name" readonly />
+
     <input type="hidden" id="use-loc" />
+
     <div class="field-row">
       <div class="field-cell">
         <label>使用数量</label>
         <input type="number" id="use-qty" min="1" value="1" />
       </div>
       <div class="field-cell">
-        <label>現在庫（GAS側で返却される場合）</label>
+        <label>現在庫（D列の数量予定）</label>
         <input type="text" id="use-stock" readonly />
       </div>
     </div>
+
     <button id="btn-use-save" class="primary">使用 / 数量調整を登録</button>
     <div id="use-msg" class="small"></div>
   </div>
+
 </div>
 
 <audio id="audio-scan" src="scan-ok.mp3" preload="auto"></audio>
@@ -157,16 +159,18 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v1.6"; // D列 plannedQty を反映（棚番未登録表示なし）
+const APP_VERSION = "v1.6";
+
+// ★★★ 必ずあなたの最新 GAS デプロイURLに貼り替えてください ★★★
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxxf5fpUYsJnIckzdxijM6u2cpfIujPasPrsoq-pDTEM1-H9LJOsNTHtwSWHMV5_sRykg/exec";
 
 document.addEventListener("DOMContentLoaded", () => {
-  const versionEl = document.getElementById("app-version-display");
-  if (versionEl) versionEl.textContent = APP_VERSION;
+  document.getElementById("app-version-display").textContent = APP_VERSION;
 });
 
+
 /************************************************************
- * 共通関数群
+ * 共通関数
  ************************************************************/
 function normalizeLocation(raw) {
   if (!raw) return "";
@@ -178,383 +182,269 @@ function normalizeLocation(raw) {
   return [first, ...rest].join("-");
 }
 
-function vibrate(pattern) {
-  if (navigator.vibrate) navigator.vibrate(pattern);
-}
-
+function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
 function playSound(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  try {
-    el.currentTime = 0;
-    el.play().catch(() => {});
-  } catch (e) {}
+  try { el.currentTime = 0; el.play().catch(()=>{}); } catch(e){}
+}
+function notifyScan(){ vibrate(50); playSound("audio-scan"); }
+function notifySuccess(){ vibrate([40,60,40]); playSound("audio-success"); }
+
+async function sendInbound(id,name,loc,qty,model){
+  const body = new URLSearchParams({ mode:"inbound", order:id, itemName:name, location:loc, qty:qty, modelName:model||"" });
+  const r = await fetch(GAS_URL,{method:"POST",body});
+  return await r.json();
+}
+async function sendOutbound(id,name,loc,qty,model){
+  const body = new URLSearchParams({ mode:"outbound", order:id, itemName:name, location:loc, qty:qty, modelName:model||"" });
+  const r = await fetch(GAS_URL,{method:"POST",body});
+  return await r.json();
+}
+async function lookup(order){
+  const r = await fetch(`${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`);
+  return await r.json();
 }
 
-function notifyScan() {
-  vibrate(50);
-  playSound("audio-scan");
-}
 
-function notifySuccess() {
-  vibrate([40, 60, 40]);
-  playSound("audio-success");
-}
-
-/************************************************************
- * GAS通信関数群
- ************************************************************/
-async function sendInbound(id, name, loc, qty, model) {
-  const body = new URLSearchParams({
-    mode: "inbound",
-    order: id,
-    itemName: name,
-    location: loc,
-    qty: qty,
-    modelName: model || ""
-  });
-  const res = await fetch(GAS_URL, { method: "POST", body });
-  return await res.json();
-}
-
-async function sendOutbound(id, name, loc, qty, model) {
-  const body = new URLSearchParams({
-    mode: "outbound",
-    order: id,
-    itemName: name,
-    location: loc,
-    qty: qty,
-    modelName: model || ""
-  });
-  const res = await fetch(GAS_URL, { method: "POST", body });
-  return await res.json();
-}
-
-async function lookup(order) {
-  const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
-  const res = await fetch(url);
-  return await res.json();
-}
-
-/************************************************************
- * スキャンモードトグル
- ************************************************************/
 let html5Scanner = null;
 let continuousScan = true;
-const scanModeToggle = document.getElementById("scan-mode-toggle");
-if (scanModeToggle) {
-  continuousScan = scanModeToggle.checked;
-  scanModeToggle.addEventListener("change", (e) => {
-    continuousScan = e.target.checked;
-  });
-}
+
+document.getElementById("scan-mode-toggle").addEventListener("change",e=>{
+  continuousScan = e.target.checked;
+});
+
 
 /************************************************************
  * QRスキャン開始
  ************************************************************/
-const btnStartScan = document.getElementById("btn-start-scan");
-if (btnStartScan) {
-  btnStartScan.addEventListener("click", async () => {
-    if (html5Scanner) {
-      try { await html5Scanner.stop(); } catch (e) {}
-      html5Scanner.clear();
-      html5Scanner = null;
-    }
-    if (typeof Html5Qrcode === "undefined") {
-      alert("カメラライブラリが読み込めていません。");
-      return;
-    }
+document.getElementById("btn-start-scan").addEventListener("click", async()=>{
 
-    html5Scanner = new Html5Qrcode("qr-reader");
+  if (html5Scanner) {
+    try{ await html5Scanner.stop(); }catch(e){}
+    html5Scanner.clear(); html5Scanner=null;
+  }
 
-    html5Scanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 200 },
-      async (decoded) => {
-        const lastScan = document.getElementById("last-scan");
-        if (lastScan) lastScan.textContent = decoded;
-        notifyScan();
+  html5Scanner = new Html5Qrcode("qr-reader");
 
-        /********************************************************
-         * QRコード解析ロジック
-         ********************************************************/
-        let order = decoded;
-        let name  = "";
-        let model = "";
+  html5Scanner.start(
+    { facingMode:"environment" },
+    { fps:10, qrbox:200 },
+    async decoded => {
 
-        let delimiter = "";
-        if (decoded.includes("|")) {
-          delimiter = "|";
-        } else if (decoded.includes("/")) {
-          delimiter = "/";
-        } else if (decoded.includes("-")) {
-          delimiter = "-";
-        }
+      notifyScan();
 
-        let sp = [];
-        if (delimiter) {
-          sp = decoded.split(delimiter).map(s => s.trim());
-        }
+      const lastScan = document.getElementById("last-scan");
+      if (lastScan) lastScan.textContent = decoded;
 
-        if (delimiter === "-") {
-          // 例: ABCD-00-01-機種名-品名
-          if (sp.length >= 3) {
-            order = sp.slice(0, 3).join("-");
-            model = sp[3] || "";
-            name  = sp[4] || "";
+      // ========= QR解析 =========
+      let order = decoded;
+      let name = "";
+      let model = "";
+
+      let delimiter="";
+      if(decoded.includes("|")) delimiter="|";
+      else if(decoded.includes("/")) delimiter="/";
+      else if(decoded.includes("-")) delimiter="-";
+
+      let sp=[];
+      if(delimiter) sp = decoded.split(delimiter).map(s=>s.trim());
+
+      if (delimiter==="-" && sp.length>=4) {
+        order = sp.slice(0,4).join("-");
+        model = sp[4]||"";
+        name  = sp[5]||"";
+      } else if (delimiter==="|" && sp.length>=2) {
+        order = sp[0];
+        name  = sp[1]||"";
+        model = sp[2]||"";
+      }
+
+      const inId=document.getElementById("inbound-id");
+      const inName=document.getElementById("inbound-name");
+      const inModel=document.getElementById("inbound-model");
+      const inLoc=document.getElementById("inbound-loc");
+      const inQty=document.getElementById("inbound-qty");
+
+      const useId=document.getElementById("use-id");
+      const useName=document.getElementById("use-name");
+      const useLoc=document.getElementById("use-loc");
+      const useModel=document.getElementById("use-model");
+      const useStock=document.getElementById("use-stock");
+      const bigLoc=document.getElementById("big-location");
+
+      // lookup 実行
+      let info={};
+      try{ info = await lookup(order); }catch(e){ info={error:"lookup failed"} }
+
+      if (!info.error) {
+        const locNorm = normalizeLocation(info.location||"");
+        const plannedQty = Number(info.plannedQty||0);
+        const gasModel = info.modelName||model;
+        const gasName = info.itemName||name;
+
+        if(inId) inId.value = order;
+        if(inName) inName.value = gasName;
+        if(inModel) inModel.value = gasModel;
+        if(inQty) inQty.value = plannedQty;
+        if(inLoc) inLoc.value = locNorm;
+
+        if(useId) useId.value = order;
+        if(useName) useName.value = gasName;
+        if(useLoc) useLoc.value = locNorm;
+        if(useModel) useModel.value = gasModel;
+        if(useStock) useStock.value = plannedQty;
+
+        // ★棚番表示（未登録 → 赤）
+        if(bigLoc){
+          if(!locNorm){
+            bigLoc.textContent="未登録";
+            bigLoc.style.color="#d60000";
+            bigLoc.style.background="#ffecec";
+            bigLoc.style.border="2px solid #ff9999";
           } else {
-            order = decoded;
+            bigLoc.textContent=locNorm;
+            bigLoc.style.color="#b36b00";
+            bigLoc.style.background="#fff7e0";
+            bigLoc.style.border="2px solid #f5b800";
           }
-        } else if (delimiter === "|" || delimiter === "/") {
-          // 例: ABCD-00-01|品名|機種名
-          if (sp.length >= 3) {
-            order = sp[0] || decoded;
-            name  = sp[1] || "";
-            model = sp[2] || "";
-          } else if (sp.length === 2) {
-            order = sp[0] || decoded;
-            name  = sp[1] || "";
-            model = "";
-          } else {
-            order = decoded;
-          }
-        } else {
-          order = decoded;
         }
 
-        // 要素取得
-        const inId     = document.getElementById("inbound-id");
-        const inName   = document.getElementById("inbound-name");
-        const inModel  = document.getElementById("inbound-model");
-        const inLoc    = document.getElementById("inbound-loc");
-        const inQtyEl  = document.getElementById("inbound-qty");
-        const useId    = document.getElementById("use-id");
-        const useName  = document.getElementById("use-name");
-        const useLoc   = document.getElementById("use-loc");
-        const useModel = document.getElementById("use-model");
-        const useStock = document.getElementById("use-stock");
-        const bigLoc   = document.getElementById("big-location");
-
-        // 入荷タブ初期値
-        if (inId)    inId.value    = order;
-        if (inName)  inName.value  = name;
-        if (inModel) inModel.value = model;
-        if (inLoc)   inLoc.value   = "";
-        if (inQtyEl) inQtyEl.value = 0;
-
-        // 使用タブ初期化
-        if (useId)    useId.value    = order;
-        if (useName)  useName.value  = name;
-        if (useModel) useModel.value = model;
-        if (useLoc)   useLoc.value   = "";
-        if (useStock) useStock.value = "";
-        if (bigLoc)   bigLoc.textContent = "";
-
-        // lookup 実行
-        let info = {};
-        try {
-          info = await lookup(order);
-        } catch (e) {
-          info = { error: "lookup failed" };
-        }
-
-        if (!info.error) {
-          const gasModel    = info.modelName || model;
-          const locNorm     = normalizeLocation(info.location || "");
-          const itemName    = info.itemName || name;
-          const plannedQty  = (info.plannedQty !== undefined && info.plannedQty !== null) ? info.plannedQty : "";
-          const lastInQty   = (info.lastInQty !== undefined && info.lastInQty !== null) ? info.lastInQty : "";
-
-          // 入荷タブ
-          if (inId)    inId.value    = order;
-          if (inName)  inName.value  = itemName;
-          if (inLoc)   inLoc.value   = locNorm;
-          if (inModel) inModel.value = gasModel;
-
-          if (inQtyEl) {
-            if (plannedQty !== "" && !isNaN(plannedQty)) {
-              inQtyEl.value = plannedQty;  // D列の値を反映
-            } else {
-              inQtyEl.value = 0;           // 空なら 0 のまま
-            }
-          }
-
-          // 使用 / 調整タブ
-          if (useId)    useId.value    = order;
-          if (useName)  useName.value  = itemName;
-          if (useLoc)   useLoc.value   = locNorm;
-          if (useModel) useModel.value = gasModel;
-          if (useStock) useStock.value = lastInQty; // G列入荷数を現在庫的に表示
-          if (bigLoc)   bigLoc.textContent = locNorm;
-        } else {
-          // lookup失敗時は QR 情報のみ
-          if (useId)    useId.value    = order;
-          if (useName)  useName.value  = name;
-          if (useModel) useModel.value = model;
-          if (useLoc)   useLoc.value   = "";
-          if (useStock) useStock.value = "";
-          if (bigLoc)   bigLoc.textContent = "";
-          if (inQtyEl)  inQtyEl.value  = 0;
-        }
-
-        if (!continuousScan && html5Scanner) {
-          try { await html5Scanner.stop(); } catch (e) {}
-          html5Scanner.clear();
-          html5Scanner = null;
-        }
-      },
-      (errorMessage) => {
-        // スキャンエラー時は必要ならログへ
-      }
-    );
-  });
-}
-
-/************************************************************
- * スキャン停止
- ************************************************************/
-const btnStopScan = document.getElementById("btn-stop-scan");
-if (btnStopScan) {
-  btnStopScan.addEventListener("click", async () => {
-    if (html5Scanner) {
-      try { await html5Scanner.stop(); } catch (e) {}
-      html5Scanner.clear();
-      html5Scanner = null;
-    }
-  });
-}
-
-/************************************************************
- * 入荷登録ボタン
- ************************************************************/
-const btnInboundSave = document.getElementById("btn-inbound-save");
-if (btnInboundSave) {
-  btnInboundSave.addEventListener("click", async () => {
-    const id     = (document.getElementById("inbound-id") || {}).value?.trim() ?? "";
-    const name   = (document.getElementById("inbound-name") || {}).value?.trim() ?? "";
-    const qtyEl  = document.getElementById("inbound-qty");
-    const model  = (document.getElementById("inbound-model") || {}).value?.trim() ?? "";
-    const qty    = qtyEl ? Number(qtyEl.value) : 0;
-    const locInput = document.getElementById("inbound-loc");
-    let locRaw  = locInput ? locInput.value.trim() : "";
-    const loc   = normalizeLocation(locRaw);
-    if (locInput) locInput.value = loc;
-    const msg   = document.getElementById("inbound-msg");
-
-    if (msg) {
-      msg.textContent = "";
-      msg.classList.remove("error-text");
-    }
-    if (qtyEl) qtyEl.classList.remove("error-input");
-
-    if (!id) {
-      if (msg) {
-        msg.textContent = "オーダーIDが空のため登録できません。";
-        msg.classList.add("error-text");
-      }
-      return;
-    }
-
-    // 数量 0 / 未入力 → エラー
-    if (!Number.isFinite(qty) || qty <= 0) {
-      if (msg) {
-        msg.textContent = "数量が未入力のため登録できません。D列が空のオーダーは、この画面で正しい数量を入力してください。";
-        msg.classList.add("error-text");
-      }
-      if (qtyEl) qtyEl.classList.add("error-input");
-      return;
-    }
-
-    let res = {};
-    try {
-      res = await sendInbound(id, name, loc, qty, model);
-    } catch (e) {
-      res = { ok: false };
-    }
-
-    if (msg) {
-      if (res.ok) {
-        msg.textContent = "入荷登録：GAS OK";
-        msg.classList.remove("error-text");
-        if (qtyEl) qtyEl.classList.remove("error-input");
-        notifySuccess();
       } else {
-        msg.textContent = "入荷登録：GAS ERROR";
-        msg.classList.add("error-text");
+        // lookup失敗
+        if(useId) useId.value=order;
+        if(useName) useName.value=name;
+        if(useModel) useModel.value=model;
+        if(useLoc) useLoc.value="";
+        if(useStock) useStock.value="";
+
+        if(inId) inId.value=order;
+        if(inName) inName.value=name;
+        if(inModel) inModel.value=model;
+        if(inLoc) inLoc.value="";
+        if(inQty) inQty.value=0;
+
+        if(bigLoc){
+          bigLoc.textContent="未登録";
+          bigLoc.style.color="#d60000";
+          bigLoc.style.background="#ffecec";
+          bigLoc.style.border="2px solid #ff9999";
+        }
+      }
+
+      if(!continuousScan && html5Scanner){
+        try{ await html5Scanner.stop(); }catch(e){}
+        html5Scanner.clear(); html5Scanner=null;
       }
     }
-  });
-}
+  );
+});
+
 
 /************************************************************
- * 使用 / 調整登録ボタン
+ * 停止
  ************************************************************/
-const btnUseSave = document.getElementById("btn-use-save");
-if (btnUseSave) {
-  btnUseSave.addEventListener("click", async () => {
-    const id    = (document.getElementById("use-id") || {}).value?.trim() ?? "";
-    const name  = (document.getElementById("use-name") || {}).value?.trim() ?? "";
-    const qtyEl = document.getElementById("use-qty");
-    const model = (document.getElementById("use-model") || {}).value?.trim() ?? "";
-    const qty   = qtyEl ? Number(qtyEl.value) : 0;
-    const locInput = document.getElementById("use-loc");
-    let locRaw = locInput ? locInput.value.trim() : "";
-    const loc  = normalizeLocation(locRaw);
-    if (locInput) locInput.value = loc;
-    const bigLoc = document.getElementById("big-location");
-    if (bigLoc) bigLoc.textContent = loc;
-    const msg  = document.getElementById("use-msg");
+document.getElementById("btn-stop-scan").addEventListener("click", async()=>{
+  if(html5Scanner){
+    try{ await html5Scanner.stop(); }catch(e){}
+    html5Scanner.clear(); html5Scanner=null;
+  }
+});
 
-    if (!id || !qty) {
-      if (msg) msg.textContent = "IDと使用数量は必須です。";
-      return;
-    }
-
-    let res = {};
-    try {
-      res = await sendOutbound(id, name, loc, qty, model);
-    } catch (e) {
-      res = { ok: false };
-    }
-
-    if (msg) {
-      if (res.ok) {
-        msg.textContent = "使用 / 数量調整：GAS OK";
-        notifySuccess();
-      } else {
-        msg.textContent = "使用 / 数量調整：GAS ERROR";
-      }
-    }
-  });
-}
 
 /************************************************************
- * 棚番フォーマット（入荷側 blur 時）
+ * 入荷登録
  ************************************************************/
-const inboundLocInput = document.getElementById("inbound-loc");
-if (inboundLocInput) {
-  inboundLocInput.addEventListener("blur", () => {
-    inboundLocInput.value = normalizeLocation(inboundLocInput.value);
-  });
-}
+document.getElementById("btn-inbound-save").addEventListener("click", async()=>{
+
+  const id = document.getElementById("inbound-id").value.trim();
+  const name = document.getElementById("inbound-name").value.trim();
+  const model = document.getElementById("inbound-model").value.trim();
+  const qty = Number(document.getElementById("inbound-qty").value);
+  let loc = document.getElementById("inbound-loc").value.trim();
+  loc = normalizeLocation(loc);
+
+  const msg = document.getElementById("inbound-msg");
+
+  if(!id){
+    msg.textContent="IDがありません。";
+    msg.style.color="red";
+    return;
+  }
+  if(qty<=0){
+    msg.textContent="数量が0以下のため登録できません。";
+    msg.style.color="red";
+    return;
+  }
+
+  let r={};
+  try{ r = await sendInbound(id,name,loc,qty,model); }catch(e){ r={ok:false}; }
+
+  if(r.ok){
+    msg.textContent="入荷登録：成功";
+    msg.style.color="#0070c9";
+    notifySuccess();
+  } else {
+    msg.textContent="入荷登録：エラー";
+    msg.style.color="red";
+  }
+});
+
+
+/************************************************************
+ * 使用 / 調整登録
+ ************************************************************/
+document.getElementById("btn-use-save").addEventListener("click", async()=>{
+
+  const id=document.getElementById("use-id").value.trim();
+  const name=document.getElementById("use-name").value.trim();
+  const model=document.getElementById("use-model").value.trim();
+  const qty=Number(document.getElementById("use-qty").value);
+  let loc=document.getElementById("use-loc").value.trim();
+  loc = normalizeLocation(loc);
+
+  const msg=document.getElementById("use-msg");
+
+  if(!id){
+    msg.textContent="IDがありません。";
+    msg.style.color="red";
+    return;
+  }
+  if(qty<=0){
+    msg.textContent="数量が0以下です。";
+    msg.style.color="red";
+    return;
+  }
+
+  let r={};
+  try{ r = await sendOutbound(id,name,loc,qty,model); }catch(e){ r={ok:false}; }
+
+  if(r.ok){
+    msg.textContent="使用 / 調整：成功";
+    msg.style.color="#0070c9";
+    notifySuccess();
+  } else {
+    msg.textContent="使用 / 調整：エラー";
+    msg.style.color="red";
+  }
+});
+
 
 /************************************************************
  * タブ切り替え
  ************************************************************/
-document.querySelectorAll(".tab-button").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document
-      .querySelectorAll(".tab-button")
-      .forEach((b) => b.classList.remove("active"));
+document.querySelectorAll(".tab-button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".tab-button").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     const tab = btn.dataset.tab;
-    document.querySelectorAll(".card").forEach((c) => {
-      if (c.id === "qr-scanner-card") return;
-      c.style.display = (c.id === tab) ? "block" : "none";
+
+    document.querySelectorAll(".card").forEach(c=>{
+      if(c.id==="qr-scanner-card") return;
+      c.style.display = (c.id===tab) ? "block" : "none";
     });
   });
 });
 </script>
 </body>
 </html>
-

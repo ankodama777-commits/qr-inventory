@@ -8,7 +8,7 @@
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
   <style>
-    /* (スタイルシートは v0.8 から変更なし) */
+    /* (スタイルシートは v0.9 から変更なし) */
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f5f5f7; color: #222; }
     header { background: #1d1d1f; color: #fff; padding: 12px 16px; text-align: center; font-size: 18px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 8px; }
     .header-title { font-size: 18px; font-weight: 600; margin: 0; }
@@ -145,7 +145,7 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v0.9"; // ★バージョンを v0.9 に設定 (オーダーID 4要素確定)
+const APP_VERSION = "v1.0"; // ★バージョンを v1.0 に設定 (強制4要素オーダーID)
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
 // ページロード時にバージョン番号をヘッダーに表示
@@ -232,7 +232,7 @@ if (btnStartScan) {
         if (lastScan) lastScan.textContent = decoded;
         notifyScan();
 
-        // **【v0.9 修正版】QRコード解析ロジック**
+        // **【v1.0 修正版】QRコード解析ロジック**
         let order = decoded;
         let name  = "";
         let model = "";
@@ -252,31 +252,20 @@ if (btnStartScan) {
         }
         
         if (delimiter === '-') {
-            // ★ハイフン区切りの場合 (ABCD-00-04-123-部品５ を想定)
-            if (sp.length >= 6) {
-                // オーダーID: 1～4要素を結合 (ABCD-00-04)
-                order = sp.slice(0, 4).join("-") || decoded; 
+            // ★ハイフン区切りの場合: 要素数が5つ以上あれば、オーダーIDは常に最初の4つ、機種名/品名はその後ろの要素から抽出する
+            
+            if (sp.length >= 4) {
+                // オーダーID: 1～4要素を結合 (ABCD-00-01) - 厳密に4要素のみを使用
+                order = sp.slice(0, 4).join("-"); 
+                
                 // 機種名: 5要素目 (インデックス4)
                 model = sp[4] || ""; 
+                
                 // 品名: 6要素目 (インデックス5)
                 name  = sp[5] || ""; 
 
-            } else if (sp.length === 5) {
-                // 5要素の場合 (ABCD-00-04-123)
-                // オーダーID: 1〜4要素を結合
-                order = sp.slice(0, 4).join("-") || decoded; 
-                // 機種名: 5要素目
-                model = sp[4] || "";
-                // 品名: 空
-                name = ""; 
-                
-            } else if (sp.length >= 4) {
-                // 4要素の場合 (ABCD-00-04)
-                order = decoded;
-                model = "";
-                name = "";
             } else {
-                // 要素数が少ない場合は、全てをオーダーIDとしてlookupさせる
+                // 要素数が4つ未満の場合は、全てをオーダーIDとしてlookupさせる
                 order = decoded;
             }
         } else if (sp.length >= 3) {
@@ -362,7 +351,7 @@ if (btnStartScan) {
   });
 }
 
-// ... (以下、各種イベントリスナーは v0.8から変更なし) ...
+// ... (以下、各種イベントリスナーは v0.9から変更なし) ...
 
 const btnStopScan = document.getElementById("btn-stop-scan");
 if (btnStopScan) {

@@ -33,6 +33,10 @@
     .last-scan-label { display: block; font-size: 12px; margin-top: 10px; color: #555; }
     .last-scan-box { margin-top: 4px; padding: 6px 8px; min-height: 32px; border-radius: 8px; background: #f0f0f5; border: 1px dashed #bbb; font-size: 13px; color: #333; word-break: break-all; pointer-events: none; }
     .big-location-box { margin-top: 4px; margin-bottom: 8px; padding: 12px 8px; border-radius: 12px; background: #fff7e0; border: 2px solid #f5b800; font-size: 24px; font-weight: 700; text-align: center; letter-spacing: 0.08em; color: #b36b00; min-height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+    /* エラー表示用 */
+    .error-text { color: #b00020; font-weight: 600; }
+    .error-input { border-color: #b00020 !important; background: #ffe6e6; }
   </style>
 </head>
 
@@ -68,15 +72,6 @@
 
     <span class="last-scan-label">直近の読み取り</span>
     <div id="last-scan" class="last-scan-box"></div>
-    
-    <div class="card" style="margin-top:12px; background:#fff3e0; border: 1px solid #ffcc80; padding: 8px;">
-      <h2 style="font-size: 14px; margin-bottom: 4px;">[デバッグ情報] QR解析結果</h2>
-      <p style="font-size:12px; margin: 4px 0;">
-        オーダーID (キー): <strong id="debug-order" style="color: #c90000;"></strong><br>
-        機種名: <span id="debug-model"></span><br>
-        品名: <span id="debug-name"></span>
-      </p>
-    </div>
   </div>
 
   <div id="tab-inbound" class="card">
@@ -100,7 +95,8 @@
       </div>
       <div class="field-cell">
         <label>数量</label>
-        <input type="number" id="inbound-qty" min="1" value="1" />
+        <!-- 初期値を 1 → 0 に変更 -->
+        <input type="number" id="inbound-qty" min="0" value="0" />
       </div>
     </div>
     <button id="btn-inbound-save" class="primary">入荷を登録</button>
@@ -144,7 +140,7 @@
 /************************************************************
  * アプリ設定
  ************************************************************/
-const APP_VERSION = "v1.3"; // ハイフン分割ロジック修正版
+const APP_VERSION = "v1.4"; // デバッグ削除 + D列数量を入荷にセット + 数量必須チェック
 // ★★★ ここを最新のGASデプロイURLに置き換えてください ★★★
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec"; 
 
@@ -317,16 +313,12 @@ if (btnStartScan) {
           order = decoded;
         }
 
-        // デバッグ情報表示
-        document.getElementById("debug-order").textContent = order;
-        document.getElementById("debug-model").textContent = model;
-        document.getElementById("debug-name").textContent = name;
-
         // 入力要素の取得
-        const inId    = document.getElementById("inbound-id");
-        const inName  = document.getElementById("inbound-name");
-        const inModel = document.getElementById("inbound-model");
-        const inLoc   = document.getElementById("inbound-loc");
+        const inId     = document.getElementById("inbound-id");
+        const inName   = document.getElementById("inbound-name");
+        const inModel  = document.getElementById("inbound-model");
+        const inLoc    = document.getElementById("inbound-loc");
+        const inQtyEl  = document.getElementById("inbound-qty");
         const useId    = document.getElementById("use-id");
         const useName  = document.getElementById("use-name");
         const useLoc   = document.getElementById("use-loc");
@@ -338,6 +330,7 @@ if (btnStartScan) {
         if (inId)    inId.value    = order;
         if (inName)  inName.value  = name;
         if (inModel) inModel.value = model;
+        if (inLoc)   inLoc.value   = "";
 
         // lookupして詳細取得
         let info = {};
@@ -359,6 +352,14 @@ if (btnStartScan) {
           if (inName)  inName.value  = itemName;
           if (inLoc)   inLoc.value   = locNorm;
           if (inModel) inModel.value = gasModel;
+          // ★ D列(数量)を入荷数量に反映
+          if (inQtyEl) {
+            if (stockQty !== "" && !isNaN(stockQty)) {
+              inQtyEl.value = stockQty;
+            } else {
+              inQtyEl.value = 0; // D列が空なら 0 のまま（手入力必須）
+            }
+          }
 
           // 使用 / 調整タブ
           if (useId)    useId.value    = order;
@@ -375,6 +376,7 @@ if (btnStartScan) {
           if (useStock) useStock.value = "";
           if (bigLoc)   bigLoc.textContent = "";
           if (useLoc)   useLoc.value   = "";
+          if (inQtyEl)  inQtyEl.value  = 0;
         }
 
         if (!continuousScan && html5Scanner) {
@@ -384,7 +386,7 @@ if (btnStartScan) {
         }
       },
       (errorMessage) => {
-        // スキャンエラー時は特に何もしない（ログが必要ならここに追加）
+        // スキャンエラー時は特に何もしない（必要であればログ出力）
       }
     );
   });
@@ -410,19 +412,44 @@ if (btnStopScan) {
 const btnInboundSave = document.getElementById("btn-inbound-save");
 if (btnInboundSave) {
   btnInboundSave.addEventListener("click", async () => {
-    const id = (document.getElementById("inbound-id") || {}).value?.trim() ?? "";
-    const name = (document.getElementById("inbound-name") || {}).value?.trim() ?? "";
-    const qtyEl = document.getElementById("inbound-qty");
-    const model = (document.getElementById("inbound-model") || {}).value?.trim() ?? "";
-    const qty = qtyEl ? Number(qtyEl.value) : 0;
+    const id     = (document.getElementById("inbound-id") || {}).value?.trim() ?? "";
+    const name   = (document.getElementById("inbound-name") || {}).value?.trim() ?? "";
+    const qtyEl  = document.getElementById("inbound-qty");
+    const model  = (document.getElementById("inbound-model") || {}).value?.trim() ?? "";
+    const qty    = qtyEl ? Number(qtyEl.value) : 0;
     const locInput = document.getElementById("inbound-loc");
-    let locRaw = locInput ? locInput.value.trim() : "";
-    const loc = normalizeLocation(locRaw);
+    let locRaw  = locInput ? locInput.value.trim() : "";
+    const loc   = normalizeLocation(locRaw);
     if (locInput) locInput.value = loc;
-    const msg = document.getElementById("inbound-msg");
+    const msg   = document.getElementById("inbound-msg");
 
-    if (!id || !qty) {
-      if (msg) msg.textContent = "IDと数量は必須です。";
+    // いったんエラー表示をリセット
+    if (msg) {
+      msg.textContent = "";
+      msg.classList.remove("error-text");
+    }
+    if (qtyEl) {
+      qtyEl.classList.remove("error-input");
+    }
+
+    // ID必須チェック
+    if (!id) {
+      if (msg) {
+        msg.textContent = "オーダーIDが空のため登録できません。";
+        msg.classList.add("error-text");
+      }
+      return;
+    }
+
+    // 数量必須チェック（0または未入力はNG）
+    if (!Number.isFinite(qty) || qty <= 0) {
+      if (msg) {
+        msg.textContent = "数量が未入力のため登録できません。D列が空のオーダーは、この画面で正しい数量を入力してください。";
+        msg.classList.add("error-text");
+      }
+      if (qtyEl) {
+        qtyEl.classList.add("error-input");
+      }
       return;
     }
 
@@ -435,10 +462,13 @@ if (btnInboundSave) {
 
     if (msg) {
       if (res.ok) { 
-        msg.textContent = "入荷登録：GAS OK"; 
+        msg.textContent = "入荷登録：GAS OK";
+        msg.classList.remove("error-text");
+        if (qtyEl) qtyEl.classList.remove("error-input");
         notifySuccess(); 
       } else { 
-        msg.textContent = "入荷登録：GAS ERROR"; 
+        msg.textContent = "入荷登録：GAS ERROR";
+        msg.classList.add("error-text");
       }
     }
   });
@@ -450,18 +480,18 @@ if (btnInboundSave) {
 const btnUseSave = document.getElementById("btn-use-save");
 if (btnUseSave) {
   btnUseSave.addEventListener("click", async () => {
-    const id = (document.getElementById("use-id") || {}).value?.trim() ?? "";
-    const name = (document.getElementById("use-name") || {}).value?.trim() ?? "";
+    const id    = (document.getElementById("use-id") || {}).value?.trim() ?? "";
+    const name  = (document.getElementById("use-name") || {}).value?.trim() ?? "";
     const qtyEl = document.getElementById("use-qty");
     const model = (document.getElementById("use-model") || {}).value?.trim() ?? "";
-    const qty = qtyEl ? Number(qtyEl.value) : 0;
+    const qty   = qtyEl ? Number(qtyEl.value) : 0;
     const locInput = document.getElementById("use-loc");
     let locRaw = locInput ? locInput.value.trim() : "";
-    const loc = normalizeLocation(locRaw);
+    const loc  = normalizeLocation(locRaw);
     if (locInput) locInput.value = loc;
     const bigLoc = document.getElementById("big-location");
     if (bigLoc) bigLoc.textContent = loc;
-    const msg = document.getElementById("use-msg");
+    const msg  = document.getElementById("use-msg");
 
     if (!id || !qty) {
       if (msg) msg.textContent = "IDと使用数量は必須です。";

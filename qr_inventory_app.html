@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>QR在庫管理ミニアプリ</title>
+  <title>在庫管理ミニアプリ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -22,6 +22,21 @@
       text-align: center;
       font-size: 18px;
       font-weight: 600;
+      /* バージョン表記のためにflexを使って微調整 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px; /* アプリ名とバージョン番号の間に少し隙間 */
+    }
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+    .header-version {
+      font-size: 12px;
+      font-weight: 400;
+      color: #aaa; /* バージョン番号は少し控えめに */
     }
     .container {
       padding: 12px;
@@ -173,7 +188,8 @@
 
 <body>
 <header>
-  QR在庫管理ミニアプリ
+  <span class="header-title">在庫管理ミニアプリ</span>
+  <span id="app-version-display" class="header-version"></span>
 </header>
 
 <div class="container">
@@ -277,9 +293,19 @@
 
 <script>
 /************************************************************
- * 設定
+ * アプリ設定
  ************************************************************/
+const APP_VERSION = "v0.2"; // ★バージョンを v0.2 に更新
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
+
+// ページロード時にバージョン番号をヘッダーに表示
+document.addEventListener("DOMContentLoaded", () => {
+    const versionEl = document.getElementById("app-version-display");
+    if (versionEl) {
+        versionEl.textContent = APP_VERSION;
+    }
+});
+
 
 /************************************************************
  * 棚番整形関数
@@ -418,35 +444,46 @@ if (btnStartScan) {
 
         notifyScan();
 
-        // **【ここから修正したロジック】**
+        // **【v0.2 修正版】QRコード解析ロジック**
         let order = decoded;
         let name  = "";
         let model = "";
-
-        if (decoded.includes("|")) {
-          const sp = decoded.split("|").map(s => s.trim());
-          order = sp[0] || decoded; // 最初の要素をオーダーIDに
-          
-          if (sp.length >= 3) {
-            // 3要素以上の場合: [オーダーID, 機種名, 品名, ...]
-            model = sp[1];
-            name  = sp[2];
-          } else if (sp.length === 2) {
-            // 2要素の場合: [オーダーID, 品名]
-            name = sp[1];
-          }
-          // 1要素の場合は order=decoded (そのまま)
+        
+        // パイプ記号で分割
+        const sp = decoded.split("|").map(s => s.trim());
+        
+        if (sp.length > 0) {
+            order = sp[0] || decoded; // 最初の要素をオーダーID (空なら全体)
         }
-        // **【修正したロジックここまで】**
+        if (sp.length > 1) {
+            // 2つ目以降の要素の扱いを強化
+            if (sp.length >= 3) {
+                // 3要素以上の場合: [オーダーID, 機種名, 品名, ...]
+                model = sp[1] || "";
+                name  = sp[2] || "";
+            } else if (sp.length === 2) {
+                // 2要素の場合: [オーダーID, 品名] (機種名はないものと想定)
+                name = sp[1] || "";
+            }
+        }
+        // **QRコード解析ロジックここまで**
 
-        // 入荷タブ：初期値
+        // 入力要素の取得
         const inId    = document.getElementById("inbound-id");
         const inName  = document.getElementById("inbound-name");
         const inModel = document.getElementById("inbound-model");
+        const inLoc   = document.getElementById("inbound-loc");
+        const useId    = document.getElementById("use-id");
+        const useName  = document.getElementById("use-name");
+        const useLoc   = document.getElementById("use-loc");
+        const useModel = document.getElementById("use-model");
+        const useStock = document.getElementById("use-stock");
+        const bigLoc = document.getElementById("big-location");
 
+        // 入荷タブ：初期値 (QRコードから取得した情報でまずセット)
         if (inId)    inId.value    = order;
         if (inName)  inName.value  = name;
-        if (inModel) inModel.value = model; // QRから取得した機種名を設定
+        if (inModel) inModel.value = model;
 
         // lookupして詳細取得
         let info = {};
@@ -458,41 +495,37 @@ if (btnStartScan) {
 
         if (!info.error) {
           // GAS側から返された情報を優先して使用
-          const gasModel  = info.modelName || model; // QR情報とGAS情報を統合
+          const gasOrder  = info.order || order;
+          const gasModel  = info.modelName || model; 
           const locNorm   = normalizeLocation(info.location || "");
-          const itemName  = info.itemName || name; // QR情報とGAS情報を統合
+          const itemName  = info.itemName || name; 
           const stockQty =
             info.stockQty !== undefined && info.stockQty !== null
               ? info.stockQty
               : "";
 
           // 入荷タブ (lookup結果で上書き)
-          if (inId)    inId.value    = info.order || order;
+          if (inId)    inId.value    = gasOrder;
           if (inName)  inName.value  = itemName;
           if (inLoc)   inLoc.value   = locNorm;
           if (inModel) inModel.value = gasModel;
 
-          // 使用 / 調整タブ
-          const useId    = document.getElementById("use-id");
-          const useName  = document.getElementById("use-name");
-          const useLoc   = document.getElementById("use-loc");
-          const useModel = document.getElementById("use-model");
-          const useStock = document.getElementById("use-stock");
-          
-          if (useId)    useId.value    = info.order || order;
+          // 使用 / 調整タブ (lookup結果をセット)
+          if (useId)    useId.value    = gasOrder;
           if (useName)  useName.value  = itemName;
           if (useLoc)   useLoc.value   = locNorm;
           if (useModel) useModel.value = gasModel;
           if (useStock) useStock.value = stockQty;
-
-          const bigLoc = document.getElementById("big-location");
-          if (bigLoc) bigLoc.textContent = locNorm;
+          if (bigLoc)   bigLoc.textContent = locNorm;
         } else {
-          // lookup失敗時は棚番・在庫数はクリア
-          const bigLoc = document.getElementById("big-location");
-          const useStock = document.getElementById("use-stock");
-          if (bigLoc)   bigLoc.textContent = "";
+          // lookup失敗時は、QR情報のみをセット
+          // 使用タブのフィールドをクリア/QR情報でセット
+          if (useId)    useId.value    = order;
+          if (useName)  useName.value  = name;
+          if (useModel) useModel.value = model;
           if (useStock) useStock.value = "";
+          if (bigLoc)   bigLoc.textContent = ""; 
+          if (useLoc)   useLoc.value   = "";
         }
 
         // 単発モードならここでカメラ停止

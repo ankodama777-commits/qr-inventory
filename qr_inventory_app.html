@@ -5,7 +5,6 @@
   <title>QR在庫管理ミニアプリ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- QR読み取りライブラリ -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
   <style>
@@ -179,13 +178,11 @@
 
 <div class="container">
 
-  <!-- タブ -->
   <div class="tabs">
     <button class="tab-button active" data-tab="tab-inbound">入荷登録</button>
     <button class="tab-button" data-tab="tab-use">使用 / 調整</button>
   </div>
 
-  <!-- QRスキャナ -->
   <div class="card" id="qr-scanner-card">
     <h2>QRスキャン</h2>
 
@@ -207,11 +204,9 @@
     <div id="last-scan" class="last-scan-box"></div>
   </div>
 
-  <!-- 入荷登録 -->
   <div id="tab-inbound" class="card">
     <h2>入荷 <span class="small">IN</span></h2>
 
-    <!-- オーダー + 機種名 -->
     <div class="field-row">
       <div class="field-cell">
         <label>オーダーID</label>
@@ -223,11 +218,9 @@
       </div>
     </div>
 
-    <!-- 品名 -->
     <label>品名</label>
     <input type="text" id="inbound-name" />
 
-    <!-- 棚番 + 数量 -->
     <div class="field-row">
       <div class="field-cell">
         <label>棚番</label>
@@ -243,13 +236,10 @@
     <div id="inbound-msg" class="small"></div>
   </div>
 
-  <!-- 使用 / 数量調整 -->
   <div id="tab-use" class="card" style="display:none;">
 
-    <!-- 棚番：上は空、そのままドーンと表示 -->
     <div id="big-location" class="big-location-box"></div>
 
-    <!-- オーダー + 機種名（横並び） -->
     <div class="field-row">
       <div class="field-cell">
         <label>オーダーID</label>
@@ -261,14 +251,11 @@
       </div>
     </div>
 
-    <!-- 品名 -->
     <label>品名</label>
     <input type="text" id="use-name" readonly />
 
-    <!-- 棚番は hidden で内部保持のみ -->
     <input type="hidden" id="use-loc" />
 
-    <!-- 使用数量 + 現在庫（横並びでコンパクトに） -->
     <div class="field-row">
       <div class="field-cell">
         <label>使用数量</label>
@@ -285,19 +272,18 @@
   </div>
 </div>
 
-<!-- 音声フィードバック用（実際のファイルパスに変更してください） -->
 <audio id="audio-scan" src="scan-ok.mp3" preload="auto"></audio>
 <audio id="audio-success" src="success.mp3" preload="auto"></audio>
 
 <script>
 /************************************************************
- *   設定
+ * 設定
  ************************************************************/
 const GAS_URL = "https://script.google.com/macros/s/AKfycbw7XpM4DdL5OgqvG6iiwdjROr4vkHBYEHl8L3kCHX2hExmWoo_xv3DX3rKojg-03b0t/exec";
 
 /************************************************************
- *   棚番整形関数
- *   例: "a111" → "A-1-1-1"
+ * 棚番整形関数
+ * 例: "a111" → "A-1-1-1"
  ************************************************************/
 function normalizeLocation(raw) {
   if (!raw) return "";
@@ -310,7 +296,7 @@ function normalizeLocation(raw) {
 }
 
 /************************************************************
- *   フィードバック（バイブ & 音）
+ * フィードバック（バイブ & 音）
  ************************************************************/
 function vibrate(pattern) {
   if (navigator.vibrate) {
@@ -338,7 +324,7 @@ function notifySuccess() {
 }
 
 /************************************************************
- *   GAS呼び出し（IN）
+ * GAS呼び出し（IN）
  ************************************************************/
 async function sendInbound(id, name, loc, qty, model) {
   const body = new URLSearchParams({
@@ -359,7 +345,7 @@ async function sendInbound(id, name, loc, qty, model) {
 }
 
 /************************************************************
- *   GAS呼び出し（OUT）
+ * GAS呼び出し（OUT）
  ************************************************************/
 async function sendOutbound(id, name, loc, qty, model) {
   const body = new URLSearchParams({
@@ -380,7 +366,7 @@ async function sendOutbound(id, name, loc, qty, model) {
 }
 
 /************************************************************
- *   lookup（QR読み後）
+ * lookup（QR読み後）
  ************************************************************/
 async function lookup(order) {
   const url = `${GAS_URL}?mode=lookup&order=${encodeURIComponent(order)}`;
@@ -389,7 +375,7 @@ async function lookup(order) {
 }
 
 /************************************************************
- *   スキャンモード（連続 / 単発）
+ * スキャンモード（連続 / 単発）
  ************************************************************/
 let html5Scanner = null;
 let continuousScan = true; // true:連続, false:1回で停止
@@ -403,7 +389,7 @@ if (scanModeToggle) {
 }
 
 /************************************************************
- *   QRスキャン開始
+ * QRスキャン開始
  ************************************************************/
 const btnStartScan = document.getElementById("btn-start-scan");
 if (btnStartScan) {
@@ -432,20 +418,35 @@ if (btnStartScan) {
 
         notifyScan();
 
-        // 形式「オーダー｜品名」
+        // **【ここから修正したロジック】**
         let order = decoded;
-        let name = "";
+        let name  = "";
+        let model = "";
+
         if (decoded.includes("|")) {
-          const sp = decoded.split("|");
-          order = sp[0].trim();
-          name  = sp[1].trim();
+          const sp = decoded.split("|").map(s => s.trim());
+          order = sp[0] || decoded; // 最初の要素をオーダーIDに
+          
+          if (sp.length >= 3) {
+            // 3要素以上の場合: [オーダーID, 機種名, 品名, ...]
+            model = sp[1];
+            name  = sp[2];
+          } else if (sp.length === 2) {
+            // 2要素の場合: [オーダーID, 品名]
+            name = sp[1];
+          }
+          // 1要素の場合は order=decoded (そのまま)
         }
+        // **【修正したロジックここまで】**
 
         // 入荷タブ：初期値
-        const inId   = document.getElementById("inbound-id");
-        const inName = document.getElementById("inbound-name");
-        if (inId)   inId.value = order;
-        if (inName) inName.value = name;
+        const inId    = document.getElementById("inbound-id");
+        const inName  = document.getElementById("inbound-name");
+        const inModel = document.getElementById("inbound-model");
+
+        if (inId)    inId.value    = order;
+        if (inName)  inName.value  = name;
+        if (inModel) inModel.value = model; // QRから取得した機種名を設定
 
         // lookupして詳細取得
         let info = {};
@@ -456,20 +457,20 @@ if (btnStartScan) {
         }
 
         if (!info.error) {
-          const model   = info.modelName || "";
-          const locNorm = normalizeLocation(info.location || "");
-          const itemName = info.itemName || name;
+          // GAS側から返された情報を優先して使用
+          const gasModel  = info.modelName || model; // QR情報とGAS情報を統合
+          const locNorm   = normalizeLocation(info.location || "");
+          const itemName  = info.itemName || name; // QR情報とGAS情報を統合
           const stockQty =
             info.stockQty !== undefined && info.stockQty !== null
               ? info.stockQty
               : "";
 
-          // 入荷タブ
-          if (inName) inName.value = itemName;
-          const inLoc   = document.getElementById("inbound-loc");
-          const inModel = document.getElementById("inbound-model");
+          // 入荷タブ (lookup結果で上書き)
+          if (inId)    inId.value    = info.order || order;
+          if (inName)  inName.value  = itemName;
           if (inLoc)   inLoc.value   = locNorm;
-          if (inModel) inModel.value = model;
+          if (inModel) inModel.value = gasModel;
 
           // 使用 / 調整タブ
           const useId    = document.getElementById("use-id");
@@ -477,15 +478,17 @@ if (btnStartScan) {
           const useLoc   = document.getElementById("use-loc");
           const useModel = document.getElementById("use-model");
           const useStock = document.getElementById("use-stock");
+          
           if (useId)    useId.value    = info.order || order;
           if (useName)  useName.value  = itemName;
           if (useLoc)   useLoc.value   = locNorm;
-          if (useModel) useModel.value = model;
+          if (useModel) useModel.value = gasModel;
           if (useStock) useStock.value = stockQty;
 
           const bigLoc = document.getElementById("big-location");
           if (bigLoc) bigLoc.textContent = locNorm;
         } else {
+          // lookup失敗時は棚番・在庫数はクリア
           const bigLoc = document.getElementById("big-location");
           const useStock = document.getElementById("use-stock");
           if (bigLoc)   bigLoc.textContent = "";
@@ -508,7 +511,7 @@ if (btnStartScan) {
 }
 
 /************************************************************
- *   QRスキャン停止
+ * QRスキャン停止
  ************************************************************/
 const btnStopScan = document.getElementById("btn-stop-scan");
 if (btnStopScan) {
@@ -522,7 +525,7 @@ if (btnStopScan) {
 }
 
 /************************************************************
- *   入荷登録
+ * 入荷登録
  ************************************************************/
 const btnInboundSave = document.getElementById("btn-inbound-save");
 if (btnInboundSave) {
@@ -564,7 +567,7 @@ if (btnInboundSave) {
 }
 
 /************************************************************
- *   使用 / 数量調整
+ * 使用 / 数量調整
  ************************************************************/
 const btnUseSave = document.getElementById("btn-use-save");
 if (btnUseSave) {
@@ -609,7 +612,7 @@ if (btnUseSave) {
 }
 
 /************************************************************
- *   棚番入力の自動整形（入荷側のみ手入力可能）
+ * 棚番入力の自動整形（入荷側のみ手入力可能）
  ************************************************************/
 const inboundLocInput = document.getElementById("inbound-loc");
 if (inboundLocInput) {
@@ -619,7 +622,7 @@ if (inboundLocInput) {
 }
 
 /************************************************************
- *   タブ切り替え
+ * タブ切り替え
  ************************************************************/
 document.querySelectorAll(".tab-button").forEach((btn) => {
   btn.addEventListener("click", () => {
